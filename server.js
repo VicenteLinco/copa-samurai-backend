@@ -8,9 +8,10 @@ require('dotenv').config();
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(express.json());
-
+app.use(cors({
+  origin: ['http://localhost:5173', 'https://copa-samurai-frontend.vercel.app'],
+  credentials: true
+}));
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/copa-samurai')
   .then(() => console.log('✅ MongoDB conectado'))

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Swords, LogOut, X, Search, Filter, FileDown, Printer, Plus, Edit2, Trash2 } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://copa-samurai-backend.onrender.com';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
