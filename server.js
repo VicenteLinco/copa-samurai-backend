@@ -81,11 +81,20 @@ const adminOnly = (req, res, next) => {
 // Inicializar admin por defecto
 const initAdmin = async () => {
   try {
-    const adminExists = await Sensei.findOne({ usuario: 'admin' });
-    if (!adminExists) {
+    // Limpiar admin corrupto si existe
+    const adminExists = await Sensei.findOne({ usuario: 'admin' }).populate('dojoId');
+    if (adminExists && !adminExists.dojoId) {
+      await Sensei.deleteOne({ usuario: 'admin' });
+      console.log('🗑️ Admin corrupto eliminado');
+    }
+    
+    // Crear admin si no existe
+    const admin = await Sensei.findOne({ usuario: 'admin' });
+    if (!admin) {
       let dojo = await Dojo.findOne();
       if (!dojo) {
         dojo = await Dojo.create({ nombre: 'Admin Dojo', ubicacion: 'Central' });
+        console.log('✅ Dojo admin creado');
       }
       const hashedPassword = await bcrypt.hash('admin123', 10);
       await Sensei.create({
@@ -95,10 +104,12 @@ const initAdmin = async () => {
         dojoId: dojo._id,
         rol: 'admin'
       });
-      console.log('✅ Usuario admin creado');
+      console.log('✅ Usuario admin creado correctamente');
+    } else {
+      console.log('✅ Admin ya existe');
     }
   } catch (error) {
-    console.error('Error al crear admin:', error);
+    console.error('❌ Error al crear admin:', error);
   }
 };
 
@@ -111,6 +122,11 @@ app.post('/api/login', async (req, res) => {
     const sensei = await Sensei.findOne({ usuario }).populate('dojoId');
     if (!sensei) {
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+    }
+    
+    if (!sensei.dojoId) {
+      console.error('ERROR: Sensei sin dojo asignado:', sensei.usuario);
+      return res.status(500).json({ error: 'Error de configuración. Contacte al administrador.' });
     }
     
     const isMatch = await bcrypt.compare(password, sensei.password);
