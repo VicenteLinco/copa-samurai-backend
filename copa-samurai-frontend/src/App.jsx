@@ -20,6 +20,8 @@ function App() {
   const [editingItem, setEditingItem] = useState(null);
   
   const [formData, setFormData] = useState({});
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
   useEffect(() => {
     if (token) {
@@ -88,6 +90,46 @@ function App() {
     setUser(null);
     setSearchTerm('');
     setSelectedDojo('');
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      alert('Las contraseñas no coinciden');
+      return;
+    }
+    
+    if (passwordData.newPassword.length < 6) {
+      alert('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    
+    try {
+      const res = await fetch(`${API_URL}/change-password`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert('Contraseña actualizada correctamente');
+        setShowPasswordModal(false);
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        alert(data.error || 'Error al cambiar contraseña');
+      }
+    } catch (error) {
+      alert('Error de conexión');
+    }
   };
 
   const openModal = (type, item = null) => {
@@ -324,50 +366,58 @@ function App() {
             </div>
           </div>
           
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 bg-red-700 hover:bg-red-800 px-4 py-2 rounded-lg transition"
-          >
-            <LogOut className="w-5 h-5" />
-            Cerrar Sesión
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              className="bg-red-700 hover:bg-red-800 px-4 py-2 rounded-lg transition"
+            >
+              Cambiar Contraseña
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 bg-red-700 hover:bg-red-800 px-4 py-2 rounded-lg transition"
+            >
+              <LogOut className="w-5 h-5" />
+              Cerrar Sesión
+            </button>
+          </div>
         </div>
         
         <div className="container mx-auto px-4">
-          <div className="flex gap-1 border-b border-red-500">
+          <div className="flex gap-3 pb-4">
             {user?.rol === 'admin' && (
               <>
                 <button
                   onClick={() => { setActiveTab('dojos'); setShowModal(false); }}
-                  className={`px-6 py-3 font-semibold transition ${
+                  className={`px-8 py-3 font-bold rounded-lg transition shadow-lg ${
                     activeTab === 'dojos'
-                      ? 'bg-white text-red-600 rounded-t-lg'
-                      : 'text-white hover:bg-red-500'
+                      ? 'bg-white text-red-600 scale-105'
+                      : 'bg-red-700 text-white hover:bg-red-800 hover:scale-105'
                   }`}
                 >
-                  Dojos
+                  🏯 Dojos
                 </button>
                 <button
                   onClick={() => { setActiveTab('senseis'); setShowModal(false); }}
-                  className={`px-6 py-3 font-semibold transition ${
+                  className={`px-8 py-3 font-bold rounded-lg transition shadow-lg ${
                     activeTab === 'senseis'
-                      ? 'bg-white text-red-600 rounded-t-lg'
-                      : 'text-white hover:bg-red-500'
+                      ? 'bg-white text-red-600 scale-105'
+                      : 'bg-red-700 text-white hover:bg-red-800 hover:scale-105'
                   }`}
                 >
-                  Senseis
+                  👤 Senseis
                 </button>
               </>
             )}
             <button
               onClick={() => { setActiveTab('participantes'); setShowModal(false); }}
-              className={`px-6 py-3 font-semibold transition ${
+              className={`px-8 py-3 font-bold rounded-lg transition shadow-lg ${
                 activeTab === 'participantes'
-                  ? 'bg-white text-red-600 rounded-t-lg'
-                  : 'text-white hover:bg-red-500'
+                  ? 'bg-white text-red-600 scale-105'
+                  : 'bg-red-700 text-white hover:bg-red-800 hover:scale-105'
               }`}
             >
-              Participantes
+              👥 Participantes
             </button>
           </div>
         </div>
@@ -865,6 +915,76 @@ function App() {
                   className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition"
                 >
                   {editingItem ? 'Actualizar' : 'Crear'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CAMBIAR CONTRASEÑA */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h3 className="text-2xl font-bold text-gray-800">Cambiar Contraseña</h3>
+              <button onClick={() => setShowPasswordModal(false)} className="text-gray-500 hover:text-gray-700">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-red-600 mb-2">Contraseña Actual *</label>
+                <input
+                  type="password"
+                  required
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-red-600 mb-2">Nueva Contraseña * (mínimo 6 caracteres)</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-red-600 mb-2">Confirmar Nueva Contraseña *</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none"
+                />
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-400 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition"
+                >
+                  Actualizar
                 </button>
               </div>
             </form>

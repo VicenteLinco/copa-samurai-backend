@@ -162,6 +162,40 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Cambiar contraseña
+app.post('/api/change-password', auth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Contraseña actual y nueva son requeridas' });
+    }
+    
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    }
+    
+    const sensei = await Sensei.findById(req.user.id);
+    if (!sensei) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    
+    const isMatch = await bcrypt.compare(currentPassword, sensei.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    }
+    
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    sensei.password = hashedPassword;
+    await sensei.save();
+    
+    res.json({ message: 'Contraseña actualizada correctamente' });
+  } catch (error) {
+    console.error('Error al cambiar contraseña:', error);
+    res.status(500).json({ error: 'Error al cambiar contraseña' });
+  }
+});
+
 // ==================== RUTAS DE DOJOS ====================
 
 app.get('/api/dojos', auth, async (req, res) => {
