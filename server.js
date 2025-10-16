@@ -16,7 +16,10 @@ app.use(express.json());
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/copa-samurai')
-  .then(() => console.log('✅ MongoDB conectado'))
+  .then(async () => {
+    console.log('✅ MongoDB conectado');
+    await initAdmin();
+  })
   .catch(err => console.error('❌ Error MongoDB:', err));
 
 // Schemas
@@ -80,8 +83,11 @@ const initAdmin = async () => {
   try {
     const adminExists = await Sensei.findOne({ usuario: 'admin' });
     if (!adminExists) {
+      let dojo = await Dojo.findOne();
+      if (!dojo) {
+        dojo = await Dojo.create({ nombre: 'Admin Dojo', ubicacion: 'Central' });
+      }
       const hashedPassword = await bcrypt.hash('admin123', 10);
-      const dojo = await Dojo.findOne() || await Dojo.create({ nombre: 'Admin Dojo', ubicacion: 'Central' });
       await Sensei.create({
         nombre: 'Administrador',
         usuario: 'admin',
@@ -95,8 +101,6 @@ const initAdmin = async () => {
     console.error('Error al crear admin:', error);
   }
 };
-
-initAdmin();
 
 // ==================== RUTAS DE AUTENTICACIÓN ====================
 
