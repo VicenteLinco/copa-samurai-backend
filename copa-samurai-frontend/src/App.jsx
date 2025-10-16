@@ -1,28 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Swords, LogOut, X, Search, Filter, FileDown, Printer, Plus, Edit2, Trash2 } from 'lucide-react';
 
-const API_URL = 'https://copa-samurai-backend.onrender.com';
+const API_URL = 'https://copa-samurai-backend.onrender.com/api';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || 'null'));
   const [activeTab, setActiveTab] = useState('participantes');
   
-  // Estados para datos
   const [dojos, setDojos] = useState([]);
   const [senseis, setSenseis] = useState([]);
   const [participantes, setParticipantes] = useState([]);
   
-  // Estados para filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDojo, setSelectedDojo] = useState('');
   
-  // Estados para modales
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState(''); // 'dojo', 'sensei', 'participante'
+  const [modalType, setModalType] = useState('');
   const [editingItem, setEditingItem] = useState(null);
   
-  // Estados para formularios
   const [formData, setFormData] = useState({});
 
   useEffect(() => {
@@ -154,9 +150,9 @@ function App() {
       const data = await res.json();
       
       if (res.ok) {
-        alert(editingItem ? 'Actualizado correctamente' : 'Creado correctamente');
         closeModal();
-        loadData();
+        await loadData();
+        alert(editingItem ? 'Actualizado correctamente' : 'Creado correctamente');
       } else {
         alert(data.error || 'Error al guardar');
       }
@@ -273,7 +269,6 @@ function App() {
     printWindow.print();
   };
 
-  // LOGIN SCREEN
   if (!token) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-600 to-orange-600 flex items-center justify-center p-4">
@@ -317,10 +312,8 @@ function App() {
     );
   }
 
-  // MAIN APP
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -340,7 +333,6 @@ function App() {
           </button>
         </div>
         
-        {/* Tabs */}
         <div className="container mx-auto px-4">
           <div className="flex gap-1 border-b border-red-500">
             {user?.rol === 'admin' && (
@@ -381,9 +373,7 @@ function App() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="container mx-auto px-4 py-8">
-        {/* DOJOS TAB */}
         {activeTab === 'dojos' && user?.rol === 'admin' && (
           <div>
             <div className="flex justify-between items-center mb-6">
@@ -433,7 +423,6 @@ function App() {
           </div>
         )}
 
-        {/* SENSEIS TAB */}
         {activeTab === 'senseis' && user?.rol === 'admin' && (
           <div>
             <div className="flex justify-between items-center mb-6">
@@ -485,7 +474,6 @@ function App() {
           </div>
         )}
 
-        {/* PARTICIPANTES TAB */}
         {activeTab === 'participantes' && (
           <div>
             <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
@@ -518,7 +506,6 @@ function App() {
               </div>
             </div>
             
-            {/* Filtros */}
             <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-4">
               <div className="flex-1 min-w-[200px]">
                 <label className="block text-sm font-semibold text-red-600 mb-2">
@@ -607,7 +594,6 @@ function App() {
         )}
       </div>
 
-      {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -621,7 +607,6 @@ function App() {
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {/* DOJO FORM */}
               {modalType === 'dojo' && (
                 <>
                   <div>
@@ -647,7 +632,6 @@ function App() {
                 </>
               )}
 
-              {/* SENSEI FORM */}
               {modalType === 'sensei' && (
                 <>
                   <div>
@@ -699,7 +683,6 @@ function App() {
                 </>
               )}
 
-              {/* PARTICIPANTE FORM */}
               {modalType === 'participante' && (
                 <>
                   <div>
@@ -727,7 +710,6 @@ function App() {
                           const edad = parseInt(e.target.value);
                           const newModalidades = { ...formData.modalidades };
                           
-                          // Aplicar restricciones
                           if (edad < 10) {
                             newModalidades.kumiteIndividual = false;
                             newModalidades.kumiteEquipos = false;

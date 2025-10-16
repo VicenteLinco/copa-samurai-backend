@@ -12,6 +12,8 @@ app.use(cors({
   origin: ['http://localhost:5173', 'https://copa-samurai-frontend.vercel.app'],
   credentials: true
 }));
+app.use(express.json());
+
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/copa-samurai')
   .then(() => console.log('✅ MongoDB conectado'))
@@ -135,6 +137,7 @@ app.post('/api/login', async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Error en login:', error);
     res.status(500).json({ error: 'Error al iniciar sesión' });
   }
 });
@@ -304,17 +307,14 @@ app.get('/api/participantes', auth, async (req, res) => {
   try {
     let query = {};
     
-    // Si es sensei, solo ver sus participantes
     if (req.user.rol === 'sensei') {
       query.creadoPor = req.user.id;
     }
     
-    // Filtro por dojo (solo admin)
     if (req.query.dojoId && req.user.rol === 'admin') {
       query.dojoId = req.query.dojoId;
     }
     
-    // Búsqueda por nombre
     if (req.query.search) {
       query.nombre = { $regex: req.query.search, $options: 'i' };
     }
@@ -333,7 +333,6 @@ app.post('/api/participantes', auth, async (req, res) => {
   try {
     const { nombre, edad, genero, grado, dojoId, modalidades } = req.body;
     
-    // Validaciones básicas
     if (!nombre?.trim()) {
       return res.status(400).json({ error: 'El nombre es obligatorio' });
     }
@@ -347,14 +346,12 @@ app.post('/api/participantes', auth, async (req, res) => {
       return res.status(400).json({ error: 'El grado es obligatorio' });
     }
     
-    // Validar modalidades
     const { kataIndividual, kataEquipos, kumiteIndividual, kumiteEquipos, kihonIppon } = modalidades || {};
     
     if (!kataIndividual && !kataEquipos && !kumiteIndividual && !kumiteEquipos && !kihonIppon) {
       return res.status(400).json({ error: 'Debe seleccionar al menos una modalidad' });
     }
     
-    // Validar restricciones de edad
     if (kumiteIndividual && edad < 10) {
       return res.status(400).json({ error: 'Kumite Individual solo para 10+ años' });
     }
@@ -365,10 +362,9 @@ app.post('/api/participantes', auth, async (req, res) => {
       return res.status(400).json({ error: 'Kihon Ippon solo para 6-10 años' });
     }
     
-    // Determinar dojo
     let finalDojoId = dojoId;
     if (req.user.rol === 'sensei') {
-      finalDojoId = req.user.dojoId; // Sensei usa su propio dojo
+      finalDojoId = req.user.dojoId;
     }
     
     if (!finalDojoId) {
@@ -395,6 +391,7 @@ app.post('/api/participantes', auth, async (req, res) => {
     const participantePopulated = await Participante.findById(participante._id).populate('dojoId');
     res.status(201).json(participantePopulated);
   } catch (error) {
+    console.error('Error al crear participante:', error);
     res.status(400).json({ error: 'Error al crear participante: ' + error.message });
   }
 });
@@ -403,7 +400,6 @@ app.put('/api/participantes/:id', auth, async (req, res) => {
   try {
     const { nombre, edad, genero, grado, dojoId, modalidades } = req.body;
     
-    // Verificar permisos
     const participante = await Participante.findById(req.params.id);
     if (!participante) {
       return res.status(404).json({ error: 'Participante no encontrado' });
@@ -413,7 +409,6 @@ app.put('/api/participantes/:id', auth, async (req, res) => {
       return res.status(403).json({ error: 'No tienes permiso para editar este participante' });
     }
     
-    // Validaciones básicas
     if (!nombre?.trim()) {
       return res.status(400).json({ error: 'El nombre es obligatorio' });
     }
@@ -427,14 +422,12 @@ app.put('/api/participantes/:id', auth, async (req, res) => {
       return res.status(400).json({ error: 'El grado es obligatorio' });
     }
     
-    // Validar modalidades
     const { kataIndividual, kataEquipos, kumiteIndividual, kumiteEquipos, kihonIppon } = modalidades || {};
     
     if (!kataIndividual && !kataEquipos && !kumiteIndividual && !kumiteEquipos && !kihonIppon) {
       return res.status(400).json({ error: 'Debe seleccionar al menos una modalidad' });
     }
     
-    // Validar restricciones de edad
     if (kumiteIndividual && edad < 10) {
       return res.status(400).json({ error: 'Kumite Individual solo para 10+ años' });
     }
@@ -445,7 +438,6 @@ app.put('/api/participantes/:id', auth, async (req, res) => {
       return res.status(400).json({ error: 'Kihon Ippon solo para 6-10 años' });
     }
     
-    // Determinar dojo
     let finalDojoId = dojoId;
     if (req.user.rol === 'sensei') {
       finalDojoId = req.user.dojoId;
@@ -476,6 +468,7 @@ app.put('/api/participantes/:id', auth, async (req, res) => {
     
     res.json(participanteActualizado);
   } catch (error) {
+    console.error('Error al actualizar participante:', error);
     res.status(400).json({ error: 'Error al actualizar participante: ' + error.message });
   }
 });
@@ -487,7 +480,6 @@ app.delete('/api/participantes/:id', auth, async (req, res) => {
       return res.status(404).json({ error: 'Participante no encontrado' });
     }
     
-    // Verificar permisos
     if (req.user.rol === 'sensei' && participante.creadoPor.toString() !== req.user.id) {
       return res.status(403).json({ error: 'No tienes permiso para eliminar este participante' });
     }
