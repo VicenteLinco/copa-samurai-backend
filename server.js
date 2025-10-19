@@ -9,7 +9,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://copa-samurai-frontend.vercel.app'],
+  origin: '*',
   credentials: true
 }));
 app.use(express.json());
@@ -361,20 +361,24 @@ app.get('/api/participantes', auth, async (req, res) => {
   try {
     let query = {};
     
+    // Sensei solo ve participantes de su dojo
     if (req.user.rol === 'sensei') {
-      query.creadoPor = req.user.id;
+      query.dojoId = req.user.dojoId;
     }
     
+    // Admin puede filtrar por dojo
     if (req.query.dojoId && req.user.rol === 'admin') {
       query.dojoId = req.query.dojoId;
     }
     
+    // Búsqueda por nombre
     if (req.query.search) {
       query.nombre = { $regex: req.query.search, $options: 'i' };
     }
     
     const participantes = await Participante.find(query)
       .populate('dojoId')
+      .populate('creadoPor', 'nombre')
       .sort({ nombre: 1 });
     
     res.json(participantes);
@@ -390,6 +394,15 @@ app.post('/api/participantes', auth, async (req, res) => {
     if (!nombre?.trim()) {
       return res.status(400).json({ error: 'El nombre es obligatorio' });
     }
+    
+    // Validar nombre único
+    const nombreExiste = await Participante.findOne({ 
+      nombre: { $regex: `^${nombre.trim()}$`, $options: 'i' } 
+    });
+    if (nombreExiste) {
+      return res.status(400).json({ error: 'Ya existe un participante con ese nombre' });
+    }
+    
     if (!edad || edad < 1 || edad > 100) {
       return res.status(400).json({ error: 'La edad debe estar entre 1 y 100' });
     }
@@ -466,6 +479,16 @@ app.put('/api/participantes/:id', auth, async (req, res) => {
     if (!nombre?.trim()) {
       return res.status(400).json({ error: 'El nombre es obligatorio' });
     }
+    
+    // Validar nombre único (excepto el actual)
+    const nombreExiste = await Participante.findOne({ 
+      nombre: { $regex: `^${nombre.trim()}$`, $options: 'i' },
+      _id: { $ne: req.params.id }
+    });
+    if (nombreExiste) {
+      return res.status(400).json({ error: 'Ya existe un participante con ese nombre' });
+    }
+    
     if (!edad || edad < 1 || edad > 100) {
       return res.status(400).json({ error: 'La edad debe estar entre 1 y 100' });
     }

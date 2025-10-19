@@ -600,6 +600,9 @@ function App() {
                     <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Género</th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Grado</th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Dojo</th>
+                    {user?.rol === 'sensei' && (
+                      <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Creado por</th>
+                    )}
                     <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Modalidades</th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Acciones</th>
                   </tr>
@@ -612,6 +615,17 @@ function App() {
                       <td className="px-6 py-4">{p.genero}</td>
                       <td className="px-6 py-4">{p.grado}</td>
                       <td className="px-6 py-4">{p.dojoId?.nombre}</td>
+                      {user?.rol === 'sensei' && (
+                        <td className="px-6 py-4">
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            p.creadoPor?._id === user.id 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {p.creadoPor?.nombre || 'Admin'}
+                          </span>
+                        </td>
+                      )}
                       <td className="px-6 py-4">
                         <div className="text-xs space-y-1">
                           {p.modalidades.kataIndividual && <div>✓ Kata Ind.</div>}
@@ -622,18 +636,27 @@ function App() {
                         </div>
                       </td>
                       <td className="px-6 py-4 flex gap-2">
-                        <button
-                          onClick={() => openModal('participante', p)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Edit2 className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete('participante', p._id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                        {(user?.rol === 'admin' || p.creadoPor?._id === user?.id) && (
+                          <>
+                            <button
+                              onClick={() => openModal('participante', p)}
+                              className="text-blue-600 hover:text-blue-800"
+                              title="Editar"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete('participante', p._id)}
+                              className="text-red-600 hover:text-red-800"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </>
+                        )}
+                        {user?.rol === 'sensei' && p.creadoPor?._id !== user?.id && (
+                          <span className="text-xs text-gray-400 italic">Solo lectura</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -922,7 +945,6 @@ function App() {
         </div>
       )}
 
-      {/* MODAL CAMBIAR CONTRASEÑA */}
       {showPasswordModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-2xl max-w-md w-full">
