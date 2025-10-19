@@ -472,7 +472,8 @@ app.put('/api/participantes/:id', auth, async (req, res) => {
       return res.status(404).json({ error: 'Participante no encontrado' });
     }
     
-    if (req.user.rol === 'sensei' && participante.creadoPor.toString() !== req.user.id) {
+    // Sensei solo puede editar participantes de su dojo
+    if (req.user.rol === 'sensei' && participante.dojoId.toString() !== req.user.dojoId.toString()) {
       return res.status(403).json({ error: 'No tienes permiso para editar este participante' });
     }
     
@@ -557,7 +558,8 @@ app.delete('/api/participantes/:id', auth, async (req, res) => {
       return res.status(404).json({ error: 'Participante no encontrado' });
     }
     
-    if (req.user.rol === 'sensei' && participante.creadoPor.toString() !== req.user.id) {
+    // Sensei solo puede eliminar participantes de su dojo
+    if (req.user.rol === 'sensei' && participante.dojoId.toString() !== req.user.dojoId.toString()) {
       return res.status(403).json({ error: 'No tienes permiso para eliminar este participante' });
     }
     

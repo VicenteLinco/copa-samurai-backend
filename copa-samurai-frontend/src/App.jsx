@@ -316,7 +316,7 @@ function App() {
       <div className="min-h-screen bg-gradient-to-br from-red-600 to-orange-600 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md">
           <div className="text-center mb-8">
-            <Swords className="w-16 h-16 text-red-600 mx-auto mb-4" />
+            <div className="text-6xl mb-4">🥋</div>
             <h1 className="text-3xl font-bold text-gray-800">Copa Samurai 2025</h1>
             <p className="text-gray-600 mt-2">Sistema de Gestión</p>
           </div>
@@ -349,6 +349,10 @@ function App() {
               Iniciar Sesión
             </button>
           </form>
+          
+          <p className="text-center text-xs text-gray-400 mt-6">
+            Diseñado por Vicente Lincoqueo Roa
+          </p>
         </div>
       </div>
     );
@@ -359,7 +363,7 @@ function App() {
       <div className="bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Swords className="w-8 h-8" />
+            <div className="text-4xl">🥋</div>
             <div>
               <h1 className="text-2xl font-bold">Copa Samurai 2025</h1>
               <p className="text-sm text-red-100">{user?.nombre} ({user?.rol})</p>
@@ -548,10 +552,10 @@ function App() {
                 </button>
                 <button
                   onClick={() => openModal('participante')}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 transition flex items-center gap-2"
+                  className="bg-gradient-to-r from-red-600 to-orange-600 text-white px-6 py-3 rounded-lg font-bold hover:from-red-700 hover:to-orange-700 transition-all transform hover:scale-105 shadow-lg flex items-center gap-2 text-lg"
                 >
-                  <Plus className="w-5 h-5" />
-                  Nuevo
+                  <Plus className="w-6 h-6" />
+                  Registrar Nuevo Participante
                 </button>
               </div>
             </div>
@@ -636,7 +640,7 @@ function App() {
                         </div>
                       </td>
                       <td className="px-6 py-4 flex gap-2">
-                        {(user?.rol === 'admin' || p.creadoPor?._id === user?.id) && (
+                        {(user?.rol === 'admin' || (user?.rol === 'sensei' && p.dojoId?._id === user?.dojo?._id)) && (
                           <>
                             <button
                               onClick={() => openModal('participante', p)}
@@ -653,9 +657,6 @@ function App() {
                               <Trash2 className="w-5 h-5" />
                             </button>
                           </>
-                        )}
-                        {user?.rol === 'sensei' && p.creadoPor?._id !== user?.id && (
-                          <span className="text-xs text-gray-400 italic">Solo lectura</span>
                         )}
                       </td>
                     </tr>
