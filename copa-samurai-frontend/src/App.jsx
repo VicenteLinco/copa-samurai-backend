@@ -313,45 +313,46 @@ function App() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-600 to-orange-600 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md border-4 border-black">
           <div className="text-center mb-8">
             <div className="text-6xl mb-4">🥋</div>
-            <h1 className="text-3xl font-bold text-gray-800">Copa Samurai 2025</h1>
-            <p className="text-gray-600 mt-2">Sistema de Gestión</p>
+            <h1 className="text-4xl font-bold text-black mb-2">Copa Samurai 2025</h1>
+            <div className="w-32 h-1 bg-red-600 mx-auto mb-3"></div>
+            <p className="text-gray-700 font-semibold">Sistema de Gestión</p>
           </div>
           
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-sm font-semibold text-red-600 mb-2">Usuario</label>
+              <label className="block text-sm font-bold text-black mb-2">Usuario</label>
               <input
                 type="text"
                 name="usuario"
                 required
-                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none transition"
+                className="w-full px-4 py-3 border-2 border-black rounded-lg focus:border-red-600 focus:ring-4 focus:ring-red-200 outline-none transition"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-semibold text-red-600 mb-2">Contraseña</label>
+              <label className="block text-sm font-bold text-black mb-2">Contraseña</label>
               <input
                 type="password"
                 name="password"
                 required
-                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none transition"
+                className="w-full px-4 py-3 border-2 border-black rounded-lg focus:border-red-600 focus:ring-4 focus:ring-red-200 outline-none transition"
               />
             </div>
             
             <button
               type="submit"
-              className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition"
+              className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-lg border-2 border-black"
             >
               Iniciar Sesión
             </button>
           </form>
           
-          <p className="text-center text-xs text-gray-400 mt-6">
-            Diseñado por Vicente Lincoqueo Roa
+          <p className="text-center text-xs text-gray-500 mt-6">
+            Diseñado por <a href="https://wa.link/pg6sr1" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:text-red-800 font-semibold hover:underline">Vicente Lincoqueo Roa</a>
           </p>
         </div>
       </div>
@@ -360,53 +361,55 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="text-4xl">🥋</div>
-            <div>
-              <h1 className="text-2xl font-bold">Copa Samurai 2025</h1>
-              <p className="text-sm text-red-100">{user?.nombre} ({user?.rol})</p>
+      <div className="bg-white text-black shadow-xl border-b-4 border-black">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="text-4xl">🥋</div>
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-black">Copa Samurai 2025</h1>
+                <p className="text-xs md:text-sm text-red-600 font-semibold">{user?.nombre} ({user?.rol})</p>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowPasswordModal(true)}
-              className="bg-red-700 hover:bg-red-800 px-4 py-2 rounded-lg transition"
-            >
-              Cambiar Contraseña
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-700 hover:bg-red-800 px-4 py-2 rounded-lg transition"
-            >
-              <LogOut className="w-5 h-5" />
-              Cerrar Sesión
-            </button>
+            
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setShowPasswordModal(true)}
+                className="bg-white text-black px-3 md:px-4 py-2 text-sm md:text-base rounded-lg transition border-2 border-black hover:bg-red-600 hover:text-white font-semibold flex-1 md:flex-none"
+              >
+                Cambiar Contraseña
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center gap-2 bg-red-600 text-white hover:bg-red-700 px-3 md:px-4 py-2 text-sm md:text-base rounded-lg transition border-2 border-black font-semibold flex-1 md:flex-none"
+              >
+                <LogOut className="w-4 h-4 md:w-5 md:h-5" />
+                <span className="md:inline">Cerrar Sesión</span>
+              </button>
+            </div>
           </div>
         </div>
         
         <div className="container mx-auto px-4">
-          <div className="flex gap-3 pb-4">
+          <div className="flex flex-wrap gap-2 md:gap-3 pb-4">
             {user?.rol === 'admin' && (
               <>
                 <button
                   onClick={() => { setActiveTab('dojos'); setShowModal(false); }}
-                  className={`px-8 py-3 font-bold rounded-lg transition shadow-lg ${
+                  className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-base font-bold rounded-lg transition shadow-lg border-2 border-black ${
                     activeTab === 'dojos'
-                      ? 'bg-white text-red-600 scale-105'
-                      : 'bg-red-700 text-white hover:bg-red-800 hover:scale-105'
+                      ? 'bg-red-600 text-white scale-105'
+                      : 'bg-white text-black hover:bg-red-600 hover:text-white hover:scale-105'
                   }`}
                 >
                   🏯 Dojos
                 </button>
                 <button
                   onClick={() => { setActiveTab('senseis'); setShowModal(false); }}
-                  className={`px-8 py-3 font-bold rounded-lg transition shadow-lg ${
+                  className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-base font-bold rounded-lg transition shadow-lg border-2 border-black ${
                     activeTab === 'senseis'
-                      ? 'bg-white text-red-600 scale-105'
-                      : 'bg-red-700 text-white hover:bg-red-800 hover:scale-105'
+                      ? 'bg-red-600 text-white scale-105'
+                      : 'bg-white text-black hover:bg-red-600 hover:text-white hover:scale-105'
                   }`}
                 >
                   👤 Senseis
@@ -415,10 +418,10 @@ function App() {
             )}
             <button
               onClick={() => { setActiveTab('participantes'); setShowModal(false); }}
-              className={`px-8 py-3 font-bold rounded-lg transition shadow-lg ${
+              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-base font-bold rounded-lg transition shadow-lg border-2 border-black ${
                 activeTab === 'participantes'
-                  ? 'bg-white text-red-600 scale-105'
-                  : 'bg-red-700 text-white hover:bg-red-800 hover:scale-105'
+                  ? 'bg-red-600 text-white scale-105'
+                  : 'bg-white text-black hover:bg-red-600 hover:text-white hover:scale-105'
               }`}
             >
               👥 Participantes
@@ -430,44 +433,46 @@ function App() {
       <div className="container mx-auto px-4 py-8">
         {activeTab === 'dojos' && user?.rol === 'admin' && (
           <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Gestión de Dojos</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+              <h2 className="text-xl md:text-2xl font-bold text-black">Gestión de Dojos</h2>
               <button
                 onClick={() => openModal('dojo')}
-                className="bg-red-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-red-700 transition flex items-center gap-2"
+                className="bg-red-600 text-white px-4 md:px-6 py-2 md:py-3 text-sm md:text-base rounded-lg font-bold hover:bg-red-700 transition flex items-center gap-2 border-2 border-black shadow-lg w-full sm:w-auto justify-center"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4 md:w-5 md:h-5" />
                 Nuevo Dojo
               </button>
             </div>
             
-            <div className="bg-white rounded-lg shadow overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-red-100">
+            <div className="bg-white rounded-lg shadow-xl overflow-x-auto border-2 border-black">
+              <table className="w-full min-w-[500px]">
+                <thead className="bg-red-600 text-white border-b-4 border-black">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Nombre</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Ubicación</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Acciones</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Nombre</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Ubicación</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {dojos.map((dojo, idx) => (
                     <tr key={dojo._id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4">{dojo.nombre}</td>
-                      <td className="px-6 py-4">{dojo.ubicacion}</td>
-                      <td className="px-6 py-4 flex gap-2">
-                        <button
-                          onClick={() => openModal('dojo', dojo)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Edit2 className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete('dojo', dojo._id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                      <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">{dojo.nombre}</td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">{dojo.ubicacion}</td>
+                      <td className="px-3 md:px-6 py-3 md:py-4">
+                        <div className="flex gap-1 md:gap-2">
+                          <button
+                            onClick={() => openModal('dojo', dojo)}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            <Edit2 className="w-4 h-4 md:w-5 md:h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete('dojo', dojo._id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -479,46 +484,48 @@ function App() {
 
         {activeTab === 'senseis' && user?.rol === 'admin' && (
           <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Gestión de Senseis</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+              <h2 className="text-xl md:text-2xl font-bold text-black">Gestión de Senseis</h2>
               <button
                 onClick={() => openModal('sensei')}
-                className="bg-red-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-red-700 transition flex items-center gap-2"
+                className="bg-red-600 text-white px-4 md:px-6 py-2 md:py-3 text-sm md:text-base rounded-lg font-bold hover:bg-red-700 transition flex items-center gap-2 border-2 border-black shadow-lg w-full sm:w-auto justify-center"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4 md:w-5 md:h-5" />
                 Nuevo Sensei
               </button>
             </div>
             
-            <div className="bg-white rounded-lg shadow overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-red-100">
+            <div className="bg-white rounded-lg shadow-xl overflow-x-auto border-2 border-black">
+              <table className="w-full min-w-[600px]">
+                <thead className="bg-red-600 text-white border-b-4 border-black">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Nombre</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Usuario</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Dojo</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Acciones</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Nombre</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Usuario</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Dojo</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {senseis.map((sensei, idx) => (
                     <tr key={sensei._id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4">{sensei.nombre}</td>
-                      <td className="px-6 py-4">{sensei.usuario}</td>
-                      <td className="px-6 py-4">{sensei.dojoId?.nombre}</td>
-                      <td className="px-6 py-4 flex gap-2">
-                        <button
-                          onClick={() => openModal('sensei', sensei)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Edit2 className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete('sensei', sensei._id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                      <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">{sensei.nombre}</td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">{sensei.usuario}</td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">{sensei.dojoId?.nombre}</td>
+                      <td className="px-3 md:px-6 py-3 md:py-4">
+                        <div className="flex gap-1 md:gap-2">
+                          <button
+                            onClick={() => openModal('sensei', sensei)}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            <Edit2 className="w-4 h-4 md:w-5 md:h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete('sensei', sensei._id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -530,40 +537,49 @@ function App() {
 
         {activeTab === 'participantes' && (
           <div>
-            <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">
+            <div className="mb-6">
+              <h2 className="text-2xl md:text-3xl font-bold text-black mb-4 text-center">
                 Participantes {searchTerm || selectedDojo ? `(${participantes.length})` : ''}
               </h2>
               
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={exportCSV}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition flex items-center gap-2"
-                >
-                  <FileDown className="w-5 h-5" />
-                  CSV
-                </button>
-                <button
-                  onClick={exportPDF}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition flex items-center gap-2"
-                >
-                  <Printer className="w-5 h-5" />
-                  PDF
-                </button>
-                <button
-                  onClick={() => openModal('participante')}
-                  className="bg-gradient-to-r from-red-600 to-orange-600 text-white px-6 py-3 rounded-lg font-bold hover:from-red-700 hover:to-orange-700 transition-all transform hover:scale-105 shadow-lg flex items-center gap-2 text-lg"
-                >
-                  <Plus className="w-6 h-6" />
-                  Registrar Nuevo Participante
-                </button>
+              {/* Layout responsive: columna en móvil, fila en desktop */}
+              <div className="flex flex-col gap-4">
+                {/* Botón principal - siempre primero en móvil */}
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => openModal('participante')}
+                    className="bg-red-600 text-white px-6 md:px-12 py-4 md:py-5 rounded-xl font-bold text-lg md:text-2xl hover:bg-red-700 transition-all transform hover:scale-105 shadow-2xl flex items-center gap-2 md:gap-3 border-4 border-black w-full md:w-auto justify-center"
+                  >
+                    <Plus className="w-6 h-6 md:w-8 md:h-8" />
+                    <span className="hidden sm:inline">⚔️ REGISTRAR NUEVO PARTICIPANTE</span>
+                    <span className="sm:hidden">⚔️ REGISTRAR</span>
+                  </button>
+                </div>
+                
+                {/* Botones secundarios */}
+                <div className="flex gap-2 justify-center md:justify-start">
+                  <button
+                    onClick={exportCSV}
+                    className="bg-white text-black px-4 md:px-5 py-2 rounded-lg font-semibold hover:bg-red-600 hover:text-white transition flex items-center gap-2 border-2 border-black text-sm md:text-base"
+                  >
+                    <FileDown className="w-4 h-4 md:w-5 md:h-5" />
+                    CSV
+                  </button>
+                  <button
+                    onClick={exportPDF}
+                    className="bg-white text-black px-4 md:px-5 py-2 rounded-lg font-semibold hover:bg-red-600 hover:text-white transition flex items-center gap-2 border-2 border-black text-sm md:text-base"
+                  >
+                    <Printer className="w-4 h-4 md:w-5 md:h-5" />
+                    PDF
+                  </button>
+                </div>
               </div>
             </div>
             
-            <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-4">
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-sm font-semibold text-red-600 mb-2">
-                  <Search className="w-4 h-4 inline mr-1" />
+            <div className="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-6 flex flex-col md:flex-row gap-3 md:gap-4 border-4 border-black">
+              <div className="flex-1 min-w-0">
+                <label className="block text-xs md:text-sm font-bold text-black mb-2">
+                  <Search className="w-3 h-3 md:w-4 md:h-4 inline mr-1" />
                   Buscar por nombre
                 </label>
                 <input
@@ -571,20 +587,20 @@ function App() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Escribe para buscar..."
-                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none"
+                  className="w-full px-3 md:px-4 py-2 text-sm md:text-base border-2 border-black rounded-lg focus:border-red-600 focus:ring-4 focus:ring-red-200 outline-none"
                 />
               </div>
               
               {user?.rol === 'admin' && (
-                <div className="flex-1 min-w-[200px]">
-                  <label className="block text-sm font-semibold text-red-600 mb-2">
-                    <Filter className="w-4 h-4 inline mr-1" />
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs md:text-sm font-bold text-black mb-2">
+                    <Filter className="w-3 h-3 md:w-4 md:h-4 inline mr-1" />
                     Filtrar por dojo
                   </label>
                   <select
                     value={selectedDojo}
                     onChange={(e) => setSelectedDojo(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none"
+                    className="w-full px-3 md:px-4 py-2 text-sm md:text-base border-2 border-black rounded-lg focus:border-red-600 focus:ring-4 focus:ring-red-200 outline-none"
                   >
                     <option value="">Todos los dojos</option>
                     {dojos.map(dojo => (
@@ -595,42 +611,42 @@ function App() {
               )}
             </div>
             
-            <div className="bg-white rounded-lg shadow overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-red-100">
+            <div className="bg-white rounded-lg shadow-xl overflow-x-auto border-4 border-black">
+              <table className="w-full min-w-[600px]">
+                <thead className="bg-red-600 text-white border-b-4 border-black">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Nombre</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Edad</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Género</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Grado</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Dojo</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Nombre</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Edad</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Género</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Grado</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Dojo</th>
                     {user?.rol === 'sensei' && (
-                      <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Creado por</th>
+                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Creado por</th>
                     )}
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Modalidades</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-red-600">Acciones</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Modalidades</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {participantes.map((p, idx) => (
                     <tr key={p._id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4">{p.nombre}</td>
-                      <td className="px-6 py-4">{p.edad}</td>
-                      <td className="px-6 py-4">{p.genero}</td>
-                      <td className="px-6 py-4">{p.grado}</td>
-                      <td className="px-6 py-4">{p.dojoId?.nombre}</td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">{p.nombre}</td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">{p.edad}</td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">{p.genero}</td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">{p.grado}</td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">{p.dojoId?.nombre}</td>
                       {user?.rol === 'sensei' && (
-                        <td className="px-6 py-4">
-                          <span className={`text-xs px-2 py-1 rounded ${
+                        <td className="px-3 md:px-6 py-3 md:py-4">
+                          <span className={`text-xs px-2 md:px-3 py-1 rounded-full font-bold border-2 ${
                             p.creadoPor?._id === user.id 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-gray-100 text-gray-800'
+                              ? 'bg-red-600 text-white border-black' 
+                              : 'bg-white text-black border-black'
                           }`}>
                             {p.creadoPor?.nombre || 'Admin'}
                           </span>
                         </td>
                       )}
-                      <td className="px-6 py-4">
+                      <td className="px-3 md:px-6 py-3 md:py-4">
                         <div className="text-xs space-y-1">
                           {p.modalidades.kataIndividual && <div>✓ Kata Ind.</div>}
                           {p.modalidades.kataEquipos && <div>✓ Kata Eq.</div>}
@@ -639,25 +655,27 @@ function App() {
                           {p.modalidades.kihonIppon && <div>✓ Kihon Ippon</div>}
                         </div>
                       </td>
-                      <td className="px-6 py-4 flex gap-2">
-                        {(user?.rol === 'admin' || (user?.rol === 'sensei' && p.dojoId?._id === user?.dojo?._id)) && (
-                          <>
-                            <button
-                              onClick={() => openModal('participante', p)}
-                              className="text-blue-600 hover:text-blue-800"
-                              title="Editar"
-                            >
-                              <Edit2 className="w-5 h-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete('participante', p._id)}
-                              className="text-red-600 hover:text-red-800"
-                              title="Eliminar"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </>
-                        )}
+                      <td className="px-3 md:px-6 py-3 md:py-4">
+                        <div className="flex gap-1 md:gap-2">
+                          {(user?.rol === 'admin' || (user?.rol === 'sensei' && p.dojoId?._id === user?.dojo?._id)) && (
+                            <>
+                              <button
+                                onClick={() => openModal('participante', p)}
+                                className="text-blue-600 hover:text-blue-800"
+                                title="Editar"
+                              >
+                                <Edit2 className="w-4 h-4 md:w-5 md:h-5" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete('participante', p._id)}
+                                className="text-red-600 hover:text-red-800"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -669,38 +687,38 @@ function App() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-2xl font-bold text-gray-800">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 md:p-4 z-50">
+          <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-4 md:p-6 border-b sticky top-0 bg-white z-10">
+              <h3 className="text-lg md:text-2xl font-bold text-gray-800">
                 {editingItem ? 'Editar' : 'Nuevo'} {modalType === 'dojo' ? 'Dojo' : modalType === 'sensei' ? 'Sensei' : 'Participante'}
               </h3>
               <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 md:w-6 md:h-6" />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-3 md:space-y-4">
               {modalType === 'dojo' && (
                 <>
                   <div>
-                    <label className="block text-sm font-semibold text-red-600 mb-2">Nombre *</label>
+                    <label className="block text-xs md:text-sm font-bold text-black mb-2">Nombre *</label>
                     <input
                       type="text"
                       required
                       value={formData.nombre || ''}
                       onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                      className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none"
+                      className="w-full px-3 md:px-4 py-2 text-sm md:text-base border-2 border-black rounded-lg focus:border-red-600 focus:ring-4 focus:ring-red-200 outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-red-600 mb-2">Ubicación *</label>
+                    <label className="block text-xs md:text-sm font-bold text-black mb-2">Ubicación *</label>
                     <input
                       type="text"
                       required
                       value={formData.ubicacion || ''}
                       onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
-                      className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none"
+                      className="w-full px-3 md:px-4 py-2 text-sm md:text-base border-2 border-black rounded-lg focus:border-red-600 focus:ring-4 focus:ring-red-200 outline-none"
                     />
                   </div>
                 </>
@@ -926,17 +944,17 @@ function App() {
                 </>
               )}
 
-              <div className="flex gap-4 pt-4">
+              <div className="flex gap-2 md:gap-4 pt-2 md:pt-4">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-400 transition"
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 md:py-3 text-sm md:text-base rounded-lg font-bold hover:bg-gray-400 transition"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition"
+                  className="flex-1 bg-red-600 text-white py-2 md:py-3 text-sm md:text-base rounded-lg font-bold hover:bg-red-700 transition border-2 border-black"
                 >
                   {editingItem ? 'Actualizar' : 'Crear'}
                 </button>
@@ -947,65 +965,65 @@ function App() {
       )}
 
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 md:p-4 z-50">
           <div className="bg-white rounded-lg shadow-2xl max-w-md w-full">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-2xl font-bold text-gray-800">Cambiar Contraseña</h3>
+            <div className="flex justify-between items-center p-4 md:p-6 border-b">
+              <h3 className="text-lg md:text-2xl font-bold text-gray-800">Cambiar Contraseña</h3>
               <button onClick={() => setShowPasswordModal(false)} className="text-gray-500 hover:text-gray-700">
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 md:w-6 md:h-6" />
               </button>
             </div>
             
-            <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+            <form onSubmit={handleChangePassword} className="p-4 md:p-6 space-y-3 md:space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-red-600 mb-2">Contraseña Actual *</label>
+                <label className="block text-xs md:text-sm font-bold text-black mb-2">Contraseña Actual *</label>
                 <input
                   type="password"
                   required
                   value={passwordData.currentPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none"
+                  className="w-full px-3 md:px-4 py-2 text-sm md:text-base border-2 border-black rounded-lg focus:border-red-600 focus:ring-4 focus:ring-red-200 outline-none"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-red-600 mb-2">Nueva Contraseña * (mínimo 6 caracteres)</label>
+                <label className="block text-xs md:text-sm font-bold text-black mb-2">Nueva Contraseña * (mínimo 6 caracteres)</label>
                 <input
                   type="password"
                   required
                   minLength={6}
                   value={passwordData.newPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none"
+                  className="w-full px-3 md:px-4 py-2 text-sm md:text-base border-2 border-black rounded-lg focus:border-red-600 focus:ring-4 focus:ring-red-200 outline-none"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-red-600 mb-2">Confirmar Nueva Contraseña *</label>
+                <label className="block text-xs md:text-sm font-bold text-black mb-2">Confirmar Nueva Contraseña *</label>
                 <input
                   type="password"
                   required
                   minLength={6}
                   value={passwordData.confirmPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none"
+                  className="w-full px-3 md:px-4 py-2 text-sm md:text-base border-2 border-black rounded-lg focus:border-red-600 focus:ring-4 focus:ring-red-200 outline-none"
                 />
               </div>
 
-              <div className="flex gap-4 pt-4">
+              <div className="flex gap-2 md:gap-4 pt-2 md:pt-4">
                 <button
                   type="button"
                   onClick={() => {
                     setShowPasswordModal(false);
                     setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
                   }}
-                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-400 transition"
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 md:py-3 text-sm md:text-base rounded-lg font-bold hover:bg-gray-400 transition"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition"
+                  className="flex-1 bg-red-600 text-white py-2 md:py-3 text-sm md:text-base rounded-lg font-bold hover:bg-red-700 transition border-2 border-black"
                 >
                   Actualizar
                 </button>
