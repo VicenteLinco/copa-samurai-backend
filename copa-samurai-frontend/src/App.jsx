@@ -22,6 +22,7 @@ function App() {
   const [formData, setFormData] = useState({});
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [showNames, setShowNames] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -130,6 +131,41 @@ function App() {
     } catch (error) {
       alert('Error de conexión');
     }
+  };
+
+  const getEstadisticas = () => {
+    const stats = {
+      kataIndividual: { count: 0, participantes: [] },
+      kataEquipos: { count: 0, participantes: [] },
+      kumiteIndividual: { count: 0, participantes: [] },
+      kumiteEquipos: { count: 0, participantes: [] },
+      kihonIppon: { count: 0, participantes: [] }
+    };
+
+    participantes.forEach(p => {
+      if (p.modalidades.kataIndividual) {
+        stats.kataIndividual.count++;
+        stats.kataIndividual.participantes.push(p.nombre);
+      }
+      if (p.modalidades.kataEquipos) {
+        stats.kataEquipos.count++;
+        stats.kataEquipos.participantes.push(p.nombre);
+      }
+      if (p.modalidades.kumiteIndividual) {
+        stats.kumiteIndividual.count++;
+        stats.kumiteIndividual.participantes.push(p.nombre);
+      }
+      if (p.modalidades.kumiteEquipos) {
+        stats.kumiteEquipos.count++;
+        stats.kumiteEquipos.participantes.push(p.nombre);
+      }
+      if (p.modalidades.kihonIppon) {
+        stats.kihonIppon.count++;
+        stats.kihonIppon.participantes.push(p.nombre);
+      }
+    });
+
+    return stats;
   };
 
   const openModal = (type, item = null) => {
@@ -426,6 +462,16 @@ function App() {
             >
               👥 Participantes
             </button>
+            <button
+              onClick={() => { setActiveTab('estadisticas'); setShowModal(false); }}
+              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-base font-bold rounded-lg transition shadow-lg border-2 border-black ${
+                activeTab === 'estadisticas'
+                  ? 'bg-red-600 text-white scale-105'
+                  : 'bg-white text-black hover:bg-red-600 hover:text-white hover:scale-105'
+              }`}
+            >
+              📊 Estadísticas
+            </button>
           </div>
         </div>
       </div>
@@ -684,6 +730,155 @@ function App() {
             </div>
           </div>
         )}
+
+        {/* ESTADÍSTICAS TAB */}
+        {activeTab === 'estadisticas' && (
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-black mb-6 text-center">
+              📊 Estadísticas por Modalidad
+            </h2>
+
+            {/* Checkbox para mostrar nombres */}
+            <div className="bg-white rounded-lg shadow-lg p-4 mb-6 border-4 border-black">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showNames}
+                  onChange={(e) => setShowNames(e.target.checked)}
+                  className="w-5 h-5 text-red-600 rounded border-2 border-black focus:ring-4 focus:ring-red-200"
+                />
+                <span className="text-sm md:text-base font-bold text-black">
+                  Mostrar nombres de participantes
+                </span>
+              </label>
+            </div>
+
+            {/* Tabla de estadísticas */}
+            <div className="bg-white rounded-lg shadow-xl overflow-x-auto border-4 border-black">
+              <table className="w-full">
+                <thead className="bg-red-600 text-white border-b-4 border-black">
+                  <tr>
+                    <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-bold">Modalidad</th>
+                    <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-bold">Cantidad de Participantes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const stats = getEstadisticas();
+                    return (
+                      <>
+                        <tr className="bg-white border-b-2 border-gray-200">
+                          <td className="px-4 md:px-6 py-4">
+                            <div className="font-bold text-sm md:text-base">Kata Individual</div>
+                          </td>
+                          <td className="px-4 md:px-6 py-4">
+                            <div className="font-bold text-lg text-red-600">{stats.kataIndividual.count} personas</div>
+                            {showNames && stats.kataIndividual.count > 0 && (
+                              <div className="mt-2 text-xs md:text-sm text-gray-700 bg-gray-50 p-2 rounded border border-gray-300">
+                                {stats.kataIndividual.participantes.join(', ')}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+
+                        <tr className="bg-gray-50 border-b-2 border-gray-200">
+                          <td className="px-4 md:px-6 py-4">
+                            <div className="font-bold text-sm md:text-base">Kata Equipos</div>
+                          </td>
+                          <td className="px-4 md:px-6 py-4">
+                            <div className="font-bold text-lg text-red-600">{stats.kataEquipos.count} personas</div>
+                            {showNames && stats.kataEquipos.count > 0 && (
+                              <div className="mt-2 text-xs md:text-sm text-gray-700 bg-white p-2 rounded border border-gray-300">
+                                {stats.kataEquipos.participantes.join(', ')}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+
+                        <tr className="bg-white border-b-2 border-gray-200">
+                          <td className="px-4 md:px-6 py-4">
+                            <div className="font-bold text-sm md:text-base">Kumite Individual</div>
+                          </td>
+                          <td className="px-4 md:px-6 py-4">
+                            <div className="font-bold text-lg text-red-600">{stats.kumiteIndividual.count} personas</div>
+                            {showNames && stats.kumiteIndividual.count > 0 && (
+                              <div className="mt-2 text-xs md:text-sm text-gray-700 bg-gray-50 p-2 rounded border border-gray-300">
+                                {stats.kumiteIndividual.participantes.join(', ')}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+
+                        <tr className="bg-gray-50 border-b-2 border-gray-200">
+                          <td className="px-4 md:px-6 py-4">
+                            <div className="font-bold text-sm md:text-base">Kumite Equipos</div>
+                          </td>
+                          <td className="px-4 md:px-6 py-4">
+                            <div className="font-bold text-lg text-red-600">{stats.kumiteEquipos.count} personas</div>
+                            {showNames && stats.kumiteEquipos.count > 0 && (
+                              <div className="mt-2 text-xs md:text-sm text-gray-700 bg-white p-2 rounded border border-gray-300">
+                                {stats.kumiteEquipos.participantes.join(', ')}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+
+                        <tr className="bg-white">
+                          <td className="px-4 md:px-6 py-4">
+                            <div className="font-bold text-sm md:text-base">Kihon Ippon</div>
+                          </td>
+                          <td className="px-4 md:px-6 py-4">
+                            <div className="font-bold text-lg text-red-600">{stats.kihonIppon.count} personas</div>
+                            {showNames && stats.kihonIppon.count > 0 && (
+                              <div className="mt-2 text-xs md:text-sm text-gray-700 bg-gray-50 p-2 rounded border border-gray-300">
+                                {stats.kihonIppon.participantes.join(', ')}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      </>
+                    );
+                  })()}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Resumen */}
+            <div className="mt-6 bg-red-600 text-white rounded-lg shadow-xl p-4 md:p-6 border-4 border-black">
+              <h3 className="text-lg md:text-xl font-bold mb-3">📈 Resumen General</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white text-black rounded-lg p-4 border-2 border-black">
+                  <div className="text-xs md:text-sm font-semibold text-gray-600">Total Participantes Únicos</div>
+                  <div className="text-2xl md:text-3xl font-bold text-red-600">{participantes.length}</div>
+                </div>
+                <div className="bg-white text-black rounded-lg p-4 border-2 border-black">
+                  <div className="text-xs md:text-sm font-semibold text-gray-600">Total Inscripciones</div>
+                  <div className="text-2xl md:text-3xl font-bold text-red-600">
+                    {(() => {
+                      const stats = getEstadisticas();
+                      return stats.kataIndividual.count + stats.kataEquipos.count + 
+                             stats.kumiteIndividual.count + stats.kumiteEquipos.count + 
+                             stats.kihonIppon.count;
+                    })()}
+                  </div>
+                </div>
+                <div className="bg-white text-black rounded-lg p-4 border-2 border-black">
+                  <div className="text-xs md:text-sm font-semibold text-gray-600">Promedio Modalidades/Persona</div>
+                  <div className="text-2xl md:text-3xl font-bold text-red-600">
+                    {(() => {
+                      if (participantes.length === 0) return '0';
+                      const stats = getEstadisticas();
+                      const total = stats.kataIndividual.count + stats.kataEquipos.count + 
+                                   stats.kumiteIndividual.count + stats.kumiteEquipos.count + 
+                                   stats.kihonIppon.count;
+                      return (total / participantes.length).toFixed(1);
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {showModal && (
@@ -802,7 +997,7 @@ function App() {
                           const edad = parseInt(e.target.value);
                           const newModalidades = { ...formData.modalidades };
                           
-                          if (edad < 10) {
+                          if (edad < 11) {
                             newModalidades.kumiteIndividual = false;
                             newModalidades.kumiteEquipos = false;
                           }
@@ -896,15 +1091,15 @@ function App() {
                         <input
                           type="checkbox"
                           checked={formData.modalidades?.kumiteIndividual || false}
-                          disabled={!formData.edad || formData.edad < 10}
+                          disabled={!formData.edad || formData.edad < 11}
                           onChange={(e) => setFormData({
                             ...formData,
                             modalidades: { ...formData.modalidades, kumiteIndividual: e.target.checked }
                           })}
                           className="w-5 h-5 text-red-600 disabled:opacity-50"
                         />
-                        <span className={!formData.edad || formData.edad < 10 ? 'text-gray-400' : ''}>
-                          Kumite Individual {(!formData.edad || formData.edad < 10) && '(solo 10+ años)'}
+                        <span className={!formData.edad || formData.edad < 11 ? 'text-gray-400' : ''}>
+                          Kumite Individual {(!formData.edad || formData.edad < 11) && '(solo 11+ años)'}
                         </span>
                       </label>
                       
@@ -912,15 +1107,15 @@ function App() {
                         <input
                           type="checkbox"
                           checked={formData.modalidades?.kumiteEquipos || false}
-                          disabled={!formData.edad || formData.edad < 10}
+                          disabled={!formData.edad || formData.edad < 11}
                           onChange={(e) => setFormData({
                             ...formData,
                             modalidades: { ...formData.modalidades, kumiteEquipos: e.target.checked }
                           })}
                           className="w-5 h-5 text-red-600 disabled:opacity-50"
                         />
-                        <span className={!formData.edad || formData.edad < 10 ? 'text-gray-400' : ''}>
-                          Kumite Equipos {(!formData.edad || formData.edad < 10) && '(solo 10+ años)'}
+                        <span className={!formData.edad || formData.edad < 11 ? 'text-gray-400' : ''}>
+                          Kumite Equipos {(!formData.edad || formData.edad < 11) && '(solo 11+ años)'}
                         </span>
                       </label>
                       
