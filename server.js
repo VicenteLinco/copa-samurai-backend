@@ -1184,10 +1184,6 @@ app.get('/api/participantes-disponibles', auth, async (req, res) => {
       query.nombre = { $regex: nombre, $options: 'i' };
     }
 
-    if (edad) {
-      query.edad = parseInt(edad);
-    }
-
     if (genero) {
       query.genero = genero;
     }
@@ -1196,13 +1192,25 @@ app.get('/api/participantes-disponibles', auth, async (req, res) => {
       query.grado = grado;
     }
 
-    // Filtrar por elegibilidad de edad
+    // Filtrar por elegibilidad de edad (siempre aplicar el rango de la categoría)
     const rangoEdad = categoria.rangoEdadId;
-    query.edad = {
-      ...query.edad,
-      $gte: rangoEdad.edadMin,
-      $lte: rangoEdad.edadMax
-    };
+
+    // Si se especifica una edad exacta, validar que esté dentro del rango
+    if (edad) {
+      const edadNum = parseInt(edad);
+      if (edadNum >= rangoEdad.edadMin && edadNum <= rangoEdad.edadMax) {
+        query.edad = edadNum;
+      } else {
+        // Si la edad especificada está fuera del rango, no devolver ningún resultado
+        return res.json([]);
+      }
+    } else {
+      // Si no se especifica edad, aplicar el rango completo
+      query.edad = {
+        $gte: rangoEdad.edadMin,
+        $lte: rangoEdad.edadMax
+      };
+    }
 
     // Filtrar por género si la categoría lo requiere
     if (categoria.genero !== 'Mixto') {

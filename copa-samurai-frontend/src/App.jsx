@@ -30,14 +30,18 @@ function App() {
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [showNames, setShowNames] = useState(false);
   const [participantesDisponibles, setParticipantesDisponibles] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (token) {
+    if (token && !isLoading) {
       loadData();
     }
   }, [token, activeTab, searchTerm, selectedDojo]);
 
   const loadData = async () => {
+    if (isLoading) return; // Prevenir llamadas múltiples simultáneas
+
+    setIsLoading(true);
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
 
@@ -107,6 +111,8 @@ function App() {
       }
     } catch (error) {
       console.error('Error cargando datos:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1470,8 +1476,16 @@ function App() {
               </div>
             )}
 
-            <div className="space-y-6">
-              {panelGeneral && panelGeneral.length > 0 ? (
+            {isLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-red-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600 font-semibold">Cargando datos...</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {panelGeneral && panelGeneral.length > 0 ? (
                 panelGeneral.map((categoria, idx) => (
                   <div key={idx} className="bg-white rounded-lg shadow-xl border-4 border-black overflow-hidden">
                     <div className="bg-red-600 text-white px-4 md:px-6 py-3 md:py-4 border-b-4 border-black">
@@ -1531,7 +1545,8 @@ function App() {
                   <p className="text-gray-400 text-sm mt-2">Crea equipos primero para verlos aquí</p>
                 </div>
               )}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </div>
