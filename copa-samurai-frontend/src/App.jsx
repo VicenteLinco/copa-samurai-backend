@@ -93,10 +93,16 @@ function App() {
 
       // Cargar configuración para equipos
       if (activeTab === 'equipos') {
-        const configRes = await fetch(`${API_URL}/configuracion/maxMiembrosEquipo`, { headers });
-        if (configRes.ok) {
-          const config = await configRes.json();
+        const configMaxRes = await fetch(`${API_URL}/configuracion/maxMiembrosEquipo`, { headers });
+        if (configMaxRes.ok) {
+          const config = await configMaxRes.json();
           setConfiguracion(prev => ({ ...prev, maxMiembrosEquipo: config.valor }));
+        }
+
+        const configMinRes = await fetch(`${API_URL}/configuracion/minMiembrosEquipo`, { headers });
+        if (configMinRes.ok) {
+          const config = await configMinRes.json();
+          setConfiguracion(prev => ({ ...prev, minMiembrosEquipo: config.valor }));
         }
       }
     } catch (error) {
@@ -400,6 +406,50 @@ function App() {
       } else {
         const data = await res.json();
         alert(data.error || 'Error al eliminar');
+      }
+    } catch (error) {
+      alert('Error de conexión');
+    }
+  };
+
+  const handleActivarEquipo = async (equipoId) => {
+    if (!confirm('¿Activar este equipo? Deberá tener el mínimo de miembros requerido.')) return;
+
+    try {
+      const res = await fetch(`${API_URL}/equipos/${equipoId}/activar`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert('Equipo activado correctamente');
+        loadData();
+      } else {
+        alert(data.error || 'Error al activar equipo');
+      }
+    } catch (error) {
+      alert('Error de conexión');
+    }
+  };
+
+  const handleDesactivarEquipo = async (equipoId) => {
+    if (!confirm('¿Volver este equipo a borrador? Podrás editarlo y activarlo nuevamente.')) return;
+
+    try {
+      const res = await fetch(`${API_URL}/equipos/${equipoId}/desactivar`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert('Equipo devuelto a borrador');
+        loadData();
+      } else {
+        alert(data.error || 'Error al desactivar equipo');
       }
     } catch (error) {
       alert('Error de conexión');
@@ -1298,13 +1348,14 @@ function App() {
             )}
 
             <div className="bg-white rounded-lg shadow-xl overflow-x-auto border-4 border-black">
-              <table className="w-full min-w-[700px]">
+              <table className="w-full min-w-[800px]">
                 <thead className="bg-red-600 text-white border-b-4 border-black">
                   <tr>
                     <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Nombre</th>
                     <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Categoría</th>
                     <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Dojo</th>
                     <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Miembros</th>
+                    <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Estado</th>
                     <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">N° Equipo</th>
                     <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold">Acciones</th>
                   </tr>
@@ -1316,8 +1367,21 @@ function App() {
                       <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">{equipo.categoriaId?.nombre}</td>
                       <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">{equipo.dojoId?.nombre}</td>
                       <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">
-                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-bold">
-                          {equipo.miembros?.length || 0} integrantes
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                          equipo.miembros?.length >= (configuracion.minMiembrosEquipo || 3)
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {equipo.miembros?.length || 0}/{configuracion.maxMiembrosEquipo || 3}
+                        </span>
+                      </td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                          equipo.estado === 'activo'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {equipo.estado === 'activo' ? '✓ Activo' : '📝 Borrador'}
                         </span>
                       </td>
                       <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-base">
@@ -1326,7 +1390,7 @@ function App() {
                         </span>
                       </td>
                       <td className="px-3 md:px-6 py-3 md:py-4">
-                        <div className="flex gap-1 md:gap-2">
+                        <div className="flex gap-1 md:gap-2 flex-wrap">
                           {(user?.rol === 'admin' || (user?.rol === 'sensei' && equipo.dojoId?._id === user?.dojo?._id)) && (
                             <>
                               <button
@@ -1336,6 +1400,24 @@ function App() {
                               >
                                 <Edit2 className="w-4 h-4 md:w-5 md:h-5" />
                               </button>
+                              {equipo.estado === 'borrador' && (
+                                <button
+                                  onClick={() => handleActivarEquipo(equipo._id)}
+                                  className="text-green-600 hover:text-green-800"
+                                  title="Activar equipo"
+                                >
+                                  ✓
+                                </button>
+                              )}
+                              {equipo.estado === 'activo' && (
+                                <button
+                                  onClick={() => handleDesactivarEquipo(equipo._id)}
+                                  className="text-orange-600 hover:text-orange-800"
+                                  title="Volver a borrador"
+                                >
+                                  ↺
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleDelete('equipo', equipo._id)}
                                 className="text-red-600 hover:text-red-800"

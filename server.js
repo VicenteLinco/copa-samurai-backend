@@ -92,6 +92,11 @@ const equipoSchema = new mongoose.Schema({
     ref: 'Participante'
   }],
   numeroEquipo: { type: Number }, // auto-generado por dojo
+  estado: {
+    type: String,
+    enum: ['borrador', 'activo'],
+    default: 'borrador'
+  },
   creadoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Sensei' }
 }, { timestamps: true });
 
@@ -151,6 +156,17 @@ async function initSistema() {
         descripcion: 'Número máximo de integrantes por equipo'
       });
       console.log('✅ Configuración de max miembros creada: 3');
+    }
+
+    // Inicializar configuración: mínimo de miembros por equipo para activarlo
+    const configMinMiembros = await Configuracion.findOne({ clave: 'minMiembrosEquipo' });
+    if (!configMinMiembros) {
+      await Configuracion.create({
+        clave: 'minMiembrosEquipo',
+        valor: 3,
+        descripcion: 'Número mínimo de integrantes para activar un equipo'
+      });
+      console.log('✅ Configuración de min miembros creada: 3');
     }
 
     // Inicializar Disciplinas
@@ -1035,6 +1051,101 @@ app.delete('/api/equipos/:id', auth, async (req, res) => {
     res.json({ message: 'Equipo eliminado' });
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar equipo' });
+  }
+});
+
+// Activar/Completar equipo (cambiar de borrador a activo)
+app.post('/api/equipos/:id/activar', auth, async (req, res) => {
+  try {
+    const equipo = await Equipo.findById(req.params.id)
+      .populate('categoriaId')
+      .populate('miembros');
+
+    if (!equipo) {
+      return res.status(404).json({ error: 'Equipo no encontrado' });
+    }
+
+    // Verificar permisos
+    if (req.user.rol === 'sensei' && equipo.dojoId.toString() !== req.user.dojo._id.toString()) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    // Verificar que no esté ya activo
+    if (equipo.estado === 'activo') {
+      return res.status(400).json({ error: 'El equipo ya está activo' });
+    }
+
+    // Obtener configuración de mínimo de miembros
+    const configMinMiembros = await Configuracion.findOne({ clave: 'minMiembrosEquipo' });
+    const minMiembros = configMinMiembros ? configMinMiembros.valor : 3;
+
+    // Validar que tenga el mínimo de miembros
+    if (equipo.miembros.length < minMiembros) {
+      return res.status(400).json({
+        error: `Para activar el equipo debe tener al menos ${minMiembros} miembros. Actualmente tiene ${equipo.miembros.length}.`
+      });
+    }
+
+    // Activar equipo
+    equipo.estado = 'activo';
+    await equipo.save();
+
+    const updated = await Equipo.findById(equipo._id)
+      .populate({
+        path: 'categoriaId',
+        populate: [
+          { path: 'disciplinaId' },
+          { path: 'rangoEdadId' }
+        ]
+      })
+      .populate('dojoId')
+      .populate('miembros')
+      .populate('creadoPor', 'nombre');
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al activar equipo' });
+  }
+});
+
+// Desactivar equipo (cambiar de activo a borrador)
+app.post('/api/equipos/:id/desactivar', auth, async (req, res) => {
+  try {
+    const equipo = await Equipo.findById(req.params.id);
+
+    if (!equipo) {
+      return res.status(404).json({ error: 'Equipo no encontrado' });
+    }
+
+    // Verificar permisos
+    if (req.user.rol === 'sensei' && equipo.dojoId.toString() !== req.user.dojo._id.toString()) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    // Verificar que esté activo
+    if (equipo.estado === 'borrador') {
+      return res.status(400).json({ error: 'El equipo ya está en borrador' });
+    }
+
+    // Desactivar equipo
+    equipo.estado = 'borrador';
+    await equipo.save();
+
+    const updated = await Equipo.findById(equipo._id)
+      .populate({
+        path: 'categoriaId',
+        populate: [
+          { path: 'disciplinaId' },
+          { path: 'rangoEdadId' }
+        ]
+      })
+      .populate('dojoId')
+      .populate('miembros')
+      .populate('creadoPor', 'nombre');
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al desactivar equipo' });
   }
 });
 
