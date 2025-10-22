@@ -795,58 +795,61 @@ app.post('/api/equipos', auth, async (req, res) => {
     const configMaxMiembros = await Configuracion.findOne({ clave: 'maxMiembrosEquipo' });
     const maxMiembros = configMaxMiembros ? configMaxMiembros.valor : 3;
 
-    // Validar número de miembros
-    if (!data.miembros || data.miembros.length === 0) {
-      return res.status(400).json({ error: 'El equipo debe tener al menos 1 miembro' });
+    // Inicializar miembros como array vacío si no se proporciona
+    if (!data.miembros) {
+      data.miembros = [];
     }
 
+    // Validar número de miembros (ahora permitimos equipos vacíos)
     if (data.miembros.length > maxMiembros) {
       return res.status(400).json({ error: `El equipo no puede tener más de ${maxMiembros} miembros` });
     }
 
-    // Validar que no hay miembros duplicados
-    const miembrosUnicos = [...new Set(data.miembros.map(m => m.toString()))];
-    if (miembrosUnicos.length !== data.miembros.length) {
-      return res.status(400).json({ error: 'No se pueden agregar participantes duplicados al equipo' });
-    }
-
-    // Obtener información de los participantes
-    const participantes = await Participante.find({ _id: { $in: data.miembros } });
-
-    if (participantes.length !== data.miembros.length) {
-      return res.status(400).json({ error: 'Uno o más participantes no existen' });
-    }
-
-    // Validar que todos los participantes pertenecen al mismo dojo
-    const dojoIds = [...new Set(participantes.map(p => p.dojoId.toString()))];
-    if (dojoIds.length > 1 || dojoIds[0] !== data.dojoId.toString()) {
-      return res.status(400).json({ error: 'Todos los participantes deben pertenecer al mismo dojo del equipo' });
-    }
-
-    // Validar elegibilidad por edad
-    const rangoEdad = categoria.rangoEdadId;
-    for (const participante of participantes) {
-      if (participante.edad < rangoEdad.edadMin || participante.edad > rangoEdad.edadMax) {
-        return res.status(400).json({
-          error: `El participante ${participante.nombre} (edad ${participante.edad}) no es elegible para la categoría ${categoria.nombre} (${rangoEdad.nombre} años)`
-        });
+    // Solo validar miembros si hay alguno
+    if (data.miembros.length > 0) {
+      // Validar que no hay miembros duplicados
+      const miembrosUnicos = [...new Set(data.miembros.map(m => m.toString()))];
+      if (miembrosUnicos.length !== data.miembros.length) {
+        return res.status(400).json({ error: 'No se pueden agregar participantes duplicados al equipo' });
       }
-    }
 
-    // Validar género según la categoría
-    if (categoria.genero !== 'Mixto') {
-      const generosInvalidos = participantes.filter(p => p.genero !== categoria.genero);
-      if (generosInvalidos.length > 0) {
-        return res.status(400).json({
-          error: `Todos los participantes deben ser de género ${categoria.genero} para esta categoría`
-        });
+      // Obtener información de los participantes
+      const participantes = await Participante.find({ _id: { $in: data.miembros } });
+
+      if (participantes.length !== data.miembros.length) {
+        return res.status(400).json({ error: 'Uno o más participantes no existen' });
       }
-    }
 
-    // Verificar que los participantes no estén ya en otro equipo de la misma categoría
-    const equiposExistentes = await Equipo.find({
-      categoriaId: data.categoriaId,
-      miembros: { $in: data.miembros }
+      // Validar que todos los participantes pertenecen al mismo dojo
+      const dojoIds = [...new Set(participantes.map(p => p.dojoId.toString()))];
+      if (dojoIds.length > 1 || dojoIds[0] !== data.dojoId.toString()) {
+        return res.status(400).json({ error: 'Todos los participantes deben pertenecer al mismo dojo del equipo' });
+      }
+
+      // Validar elegibilidad por edad
+      const rangoEdad = categoria.rangoEdadId;
+      for (const participante of participantes) {
+        if (participante.edad < rangoEdad.edadMin || participante.edad > rangoEdad.edadMax) {
+          return res.status(400).json({
+            error: `El participante ${participante.nombre} (edad ${participante.edad}) no es elegible para la categoría ${categoria.nombre} (${rangoEdad.nombre} años)`
+          });
+        }
+      }
+
+      // Validar género según la categoría
+      if (categoria.genero !== 'Mixto') {
+        const generosInvalidos = participantes.filter(p => p.genero !== categoria.genero);
+        if (generosInvalidos.length > 0) {
+          return res.status(400).json({
+            error: `Todos los participantes deben ser de género ${categoria.genero} para esta categoría`
+          });
+        }
+      }
+
+      // Verificar que los participantes no estén ya en otro equipo de la misma categoría
+      const equiposExistentes = await Equipo.find({
+        categoriaId: data.categoriaId,
+        miembros: { $in: data.miembros }
     }).populate('miembros');
 
     if (equiposExistentes.length > 0) {
@@ -927,70 +930,69 @@ app.put('/api/equipos/:id', auth, async (req, res) => {
       const configMaxMiembros = await Configuracion.findOne({ clave: 'maxMiembrosEquipo' });
       const maxMiembros = configMaxMiembros ? configMaxMiembros.valor : 3;
 
-      // Validar número de miembros
-      if (data.miembros.length === 0) {
-        return res.status(400).json({ error: 'El equipo debe tener al menos 1 miembro' });
-      }
-
+      // Validar número de miembros (ahora permitimos equipos vacíos)
       if (data.miembros.length > maxMiembros) {
         return res.status(400).json({ error: `El equipo no puede tener más de ${maxMiembros} miembros` });
       }
 
-      // Validar que no hay miembros duplicados
-      const miembrosUnicos = [...new Set(data.miembros.map(m => m.toString()))];
-      if (miembrosUnicos.length !== data.miembros.length) {
-        return res.status(400).json({ error: 'No se pueden agregar participantes duplicados al equipo' });
-      }
+      // Solo validar miembros si hay alguno
+      if (data.miembros.length > 0) {
+        // Validar que no hay miembros duplicados
+        const miembrosUnicos = [...new Set(data.miembros.map(m => m.toString()))];
+        if (miembrosUnicos.length !== data.miembros.length) {
+          return res.status(400).json({ error: 'No se pueden agregar participantes duplicados al equipo' });
+        }
 
-      // Obtener información de los participantes
-      const participantes = await Participante.find({ _id: { $in: data.miembros } });
+        // Obtener información de los participantes
+        const participantes = await Participante.find({ _id: { $in: data.miembros } });
 
-      if (participantes.length !== data.miembros.length) {
-        return res.status(400).json({ error: 'Uno o más participantes no existen' });
-      }
+        if (participantes.length !== data.miembros.length) {
+          return res.status(400).json({ error: 'Uno o más participantes no existen' });
+        }
 
-      const dojoId = data.dojoId || equipoExistente.dojoId;
+        const dojoId = data.dojoId || equipoExistente.dojoId;
 
-      // Validar que todos los participantes pertenecen al mismo dojo
-      const dojoIds = [...new Set(participantes.map(p => p.dojoId.toString()))];
-      if (dojoIds.length > 1 || dojoIds[0] !== dojoId.toString()) {
-        return res.status(400).json({ error: 'Todos los participantes deben pertenecer al mismo dojo del equipo' });
-      }
+        // Validar que todos los participantes pertenecen al mismo dojo
+        const dojoIds = [...new Set(participantes.map(p => p.dojoId.toString()))];
+        if (dojoIds.length > 1 || dojoIds[0] !== dojoId.toString()) {
+          return res.status(400).json({ error: 'Todos los participantes deben pertenecer al mismo dojo del equipo' });
+        }
 
-      // Validar elegibilidad por edad
-      const rangoEdad = categoria.rangoEdadId;
-      for (const participante of participantes) {
-        if (participante.edad < rangoEdad.edadMin || participante.edad > rangoEdad.edadMax) {
+        // Validar elegibilidad por edad
+        const rangoEdad = categoria.rangoEdadId;
+        for (const participante of participantes) {
+          if (participante.edad < rangoEdad.edadMin || participante.edad > rangoEdad.edadMax) {
+            return res.status(400).json({
+              error: `El participante ${participante.nombre} (edad ${participante.edad}) no es elegible para la categoría ${categoria.nombre} (${rangoEdad.nombre} años)`
+            });
+          }
+        }
+
+        // Validar género según la categoría
+        if (categoria.genero !== 'Mixto') {
+          const generosInvalidos = participantes.filter(p => p.genero !== categoria.genero);
+          if (generosInvalidos.length > 0) {
+            return res.status(400).json({
+              error: `Todos los participantes deben ser de género ${categoria.genero} para esta categoría`
+            });
+          }
+        }
+
+        // Verificar que los participantes no estén en otro equipo de la misma categoría (excepto este equipo)
+        const equiposExistentes = await Equipo.find({
+          _id: { $ne: req.params.id },
+          categoriaId: categoriaId,
+          miembros: { $in: data.miembros }
+        }).populate('miembros');
+
+        if (equiposExistentes.length > 0) {
+          const participanteOcupado = equiposExistentes[0].miembros.find(m =>
+            data.miembros.includes(m._id.toString())
+          );
           return res.status(400).json({
-            error: `El participante ${participante.nombre} (edad ${participante.edad}) no es elegible para la categoría ${categoria.nombre} (${rangoEdad.nombre} años)`
+            error: `El participante ${participanteOcupado.nombre} ya está en otro equipo de la categoría ${categoria.nombre}`
           });
         }
-      }
-
-      // Validar género según la categoría
-      if (categoria.genero !== 'Mixto') {
-        const generosInvalidos = participantes.filter(p => p.genero !== categoria.genero);
-        if (generosInvalidos.length > 0) {
-          return res.status(400).json({
-            error: `Todos los participantes deben ser de género ${categoria.genero} para esta categoría`
-          });
-        }
-      }
-
-      // Verificar que los participantes no estén en otro equipo de la misma categoría (excepto este equipo)
-      const equiposExistentes = await Equipo.find({
-        _id: { $ne: req.params.id },
-        categoriaId: categoriaId,
-        miembros: { $in: data.miembros }
-      }).populate('miembros');
-
-      if (equiposExistentes.length > 0) {
-        const participanteOcupado = equiposExistentes[0].miembros.find(m =>
-          data.miembros.includes(m._id.toString())
-        );
-        return res.status(400).json({
-          error: `El participante ${participanteOcupado.nombre} ya está en otro equipo de la categoría ${categoria.nombre}`
-        });
       }
     }
 
