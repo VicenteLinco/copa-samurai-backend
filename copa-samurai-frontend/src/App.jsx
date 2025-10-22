@@ -268,11 +268,18 @@ function App() {
         const catRes = await fetch(`${API_URL}/categorias`, { headers });
         if (catRes.ok) setCategorias(await catRes.json());
       }
-      // Cargar configuración de max miembros
-      const configRes = await fetch(`${API_URL}/configuracion/maxMiembrosEquipo`, { headers });
-      if (configRes.ok) {
-        const config = await configRes.json();
+
+      // Cargar configuración de max y min miembros
+      const configMaxRes = await fetch(`${API_URL}/configuracion/maxMiembrosEquipo`, { headers });
+      if (configMaxRes.ok) {
+        const config = await configMaxRes.json();
         setConfiguracion(prev => ({ ...prev, maxMiembrosEquipo: config.valor }));
+      }
+
+      const configMinRes = await fetch(`${API_URL}/configuracion/minMiembrosEquipo`, { headers });
+      if (configMinRes.ok) {
+        const config = await configMinRes.json();
+        setConfiguracion(prev => ({ ...prev, minMiembrosEquipo: config.valor }));
       }
 
       const equipoData = item || { nombre: '', categoriaId: '', dojoId: user?.rol === 'sensei' ? user.dojo._id : '', miembros: [] };
@@ -1464,59 +1471,64 @@ function App() {
             )}
 
             <div className="space-y-6">
-              {panelGeneral.map((categoria, idx) => (
-                <div key={idx} className="bg-white rounded-lg shadow-xl border-4 border-black overflow-hidden">
-                  <div className="bg-red-600 text-white px-4 md:px-6 py-3 md:py-4 border-b-4 border-black">
-                    <h3 className="text-lg md:text-xl font-bold">{categoria.nombreCategoria}</h3>
-                    <p className="text-xs md:text-sm mt-1">
-                      Total de equipos: <span className="font-bold">{categoria.equipos?.length || 0}</span>
-                    </p>
-                  </div>
+              {panelGeneral && panelGeneral.length > 0 ? (
+                panelGeneral.map((categoria, idx) => (
+                  <div key={idx} className="bg-white rounded-lg shadow-xl border-4 border-black overflow-hidden">
+                    <div className="bg-red-600 text-white px-4 md:px-6 py-3 md:py-4 border-b-4 border-black">
+                      <h3 className="text-lg md:text-xl font-bold">{categoria?.nombreCategoria || 'Categoría sin nombre'}</h3>
+                      <p className="text-xs md:text-sm mt-1">
+                        Total de equipos: <span className="font-bold">{categoria?.equipos?.length || 0}</span>
+                      </p>
+                    </div>
 
-                  <div className="p-4 md:p-6">
-                    {categoria.equipos && categoria.equipos.length > 0 ? (
-                      <div className="space-y-4">
-                        {categoria.equipos.map((equipo, eqIdx) => (
-                          <div key={eqIdx} className="border-2 border-gray-200 rounded-lg p-4 hover:border-red-600 transition">
-                            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2 mb-3">
-                              <div>
-                                <h4 className="text-base md:text-lg font-bold text-black">{equipo.nombre}</h4>
-                                <p className="text-xs md:text-sm text-gray-600">{equipo.dojo}</p>
+                    <div className="p-4 md:p-6">
+                      {categoria?.equipos && categoria.equipos.length > 0 ? (
+                        <div className="space-y-4">
+                          {categoria.equipos.map((equipo, eqIdx) => (
+                            <div key={eqIdx} className="border-2 border-gray-200 rounded-lg p-4 hover:border-red-600 transition">
+                              <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2 mb-3">
+                                <div>
+                                  <h4 className="text-base md:text-lg font-bold text-black">{equipo?.nombre || 'Sin nombre'}</h4>
+                                  <p className="text-xs md:text-sm text-gray-600">{equipo?.dojo || 'Sin dojo'}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <span className="bg-blue-100 text-blue-700 px-2 md:px-3 py-1 rounded-full text-xs font-bold">
+                                    {equipo?.cantidadMiembros || 0} integrantes
+                                  </span>
+                                  <span className="bg-gray-100 text-gray-700 px-2 md:px-3 py-1 rounded-full text-xs font-bold">
+                                    Equipo #{equipo?.numeroEquipo || 0}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex gap-2">
-                                <span className="bg-blue-100 text-blue-700 px-2 md:px-3 py-1 rounded-full text-xs font-bold">
-                                  {equipo.cantidadMiembros} integrantes
-                                </span>
-                                <span className="bg-gray-100 text-gray-700 px-2 md:px-3 py-1 rounded-full text-xs font-bold">
-                                  Equipo #{equipo.numeroEquipo}
-                                </span>
-                              </div>
-                            </div>
 
-                            <div className="bg-gray-50 rounded-lg p-3">
-                              <p className="text-xs font-bold text-gray-600 mb-2">Integrantes:</p>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                {equipo.miembros && equipo.miembros.map((miembro, mIdx) => (
-                                  <div key={mIdx} className="bg-white rounded px-3 py-2 text-xs md:text-sm border border-gray-200">
-                                    <p className="font-semibold text-black">{miembro.nombre}</p>
-                                    <p className="text-gray-600">{miembro.edad} años - {miembro.genero}</p>
+                              <div className="bg-gray-50 rounded-lg p-3">
+                                <p className="text-xs font-bold text-gray-600 mb-2">Integrantes:</p>
+                                {equipo?.miembros && equipo.miembros.length > 0 ? (
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                    {equipo.miembros.map((miembro, mIdx) => (
+                                      <div key={mIdx} className="bg-white rounded px-3 py-2 text-xs md:text-sm border border-gray-200">
+                                        <p className="font-semibold text-black">{miembro?.nombre || 'Sin nombre'}</p>
+                                        <p className="text-gray-600">{miembro?.edad || 0} años - {miembro?.genero || 'N/A'}</p>
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
+                                ) : (
+                                  <p className="text-xs text-gray-500 italic">Sin miembros asignados</p>
+                                )}
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-center text-gray-500 py-8">No hay equipos registrados en esta categoría</p>
-                    )}
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-center text-gray-500 py-8">No hay equipos registrados en esta categoría</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-
-              {panelGeneral.length === 0 && (
+                ))
+              ) : (
                 <div className="bg-white rounded-lg shadow-xl border-4 border-black p-8 text-center">
                   <p className="text-gray-500 text-lg">No hay datos para mostrar</p>
+                  <p className="text-gray-400 text-sm mt-2">Crea equipos primero para verlos aquí</p>
                 </div>
               )}
             </div>
