@@ -866,15 +866,16 @@ app.post('/api/equipos', auth, async (req, res) => {
       const equiposExistentes = await Equipo.find({
         categoriaId: data.categoriaId,
         miembros: { $in: data.miembros }
-    }).populate('miembros');
+      }).populate('miembros');
 
-    if (equiposExistentes.length > 0) {
-      const participanteOcupado = equiposExistentes[0].miembros.find(m =>
-        data.miembros.includes(m._id.toString())
-      );
-      return res.status(400).json({
-        error: `El participante ${participanteOcupado.nombre} ya está en otro equipo de la categoría ${categoria.nombre}`
-      });
+      if (equiposExistentes.length > 0) {
+        const participanteOcupado = equiposExistentes[0].miembros.find(m =>
+          data.miembros.includes(m._id.toString())
+        );
+        return res.status(400).json({
+          error: `El participante ${participanteOcupado.nombre} ya está en otro equipo de la categoría ${categoria.nombre}`
+        });
+      }
     }
 
     // Generar número de equipo automático para el dojo
