@@ -15,7 +15,6 @@ function App() {
   const [rangosEdad, setRangosEdad] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [equipos, setEquipos] = useState([]);
-  const [panelGeneral, setPanelGeneral] = useState([]);
   const [configuracion, setConfiguracion] = useState({});
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,6 +30,9 @@ function App() {
   const [showNames, setShowNames] = useState(false);
   const [participantesDisponibles, setParticipantesDisponibles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAgregarParticipantesModal, setShowAgregarParticipantesModal] = useState(false);
+  const [equipoSeleccionado, setEquipoSeleccionado] = useState(null);
+  const [participantesSeleccionados, setParticipantesSeleccionados] = useState([]);
 
   useEffect(() => {
     if (token && !isLoading) {
@@ -85,14 +87,6 @@ function App() {
 
         const equiposRes = await fetch(url, { headers });
         if (equiposRes.ok) setEquipos(await equiposRes.json());
-      }
-
-      if (activeTab === 'panel-general') {
-        let url = `${API_URL}/panel-general`;
-        if (selectedDojo) url += `?dojoId=${selectedDojo}`;
-
-        const panelRes = await fetch(url, { headers });
-        if (panelRes.ok) setPanelGeneral(await panelRes.json());
       }
 
       // Cargar configuración para equipos
@@ -469,6 +463,57 @@ function App() {
     }
   };
 
+  const abrirModalAgregarParticipantes = async (equipo) => {
+    setEquipoSeleccionado(equipo);
+    setParticipantesSeleccionados(equipo.miembros?.map(m => m._id) || []);
+
+    // Cargar participantes disponibles para este equipo
+    if (equipo.categoriaId?._id && equipo.dojoId?._id) {
+      await cargarParticipantesDisponibles(equipo.categoriaId._id, equipo.dojoId._id, equipo._id);
+    }
+
+    setShowAgregarParticipantesModal(true);
+  };
+
+  const cerrarModalAgregarParticipantes = () => {
+    setShowAgregarParticipantesModal(false);
+    setEquipoSeleccionado(null);
+    setParticipantesSeleccionados([]);
+    setParticipantesDisponibles([]);
+  };
+
+  const handleAgregarParticipantes = async () => {
+    if (!equipoSeleccionado) return;
+
+    try {
+      const res = await fetch(`${API_URL}/equipos/${equipoSeleccionado._id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          nombre: equipoSeleccionado.nombre,
+          categoriaId: equipoSeleccionado.categoriaId._id,
+          dojoId: equipoSeleccionado.dojoId._id,
+          miembros: participantesSeleccionados
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert('Participantes actualizados correctamente');
+        cerrarModalAgregarParticipantes();
+        loadData();
+      } else {
+        alert(data.error || 'Error al actualizar participantes');
+      }
+    } catch (error) {
+      alert('Error de conexión');
+    }
+  };
+
   const exportCSV = () => {
     const headers = ['Nombre', 'Edad', 'Género', 'Grado', 'Dojo', 'Kata Individual', 'Kata Equipos', 'Kumite Individual', 'Kumite Equipos', 'Kihon Ippon'];
     const rows = participantes.map(p => [
@@ -724,16 +769,6 @@ function App() {
               }`}
             >
               👥 Equipos
-            </button>
-            <button
-              onClick={() => { setActiveTab('panel-general'); setShowModal(false); }}
-              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-base font-bold rounded-lg transition shadow-lg border-2 border-black ${
-                activeTab === 'panel-general'
-                  ? 'bg-red-600 text-white scale-105'
-                  : 'bg-white text-black hover:bg-red-600 hover:text-white hover:scale-105'
-              }`}
-            >
-              📋 Panel General
             </button>
           </div>
         </div>
@@ -1407,6 +1442,13 @@ function App() {
                           {(user?.rol === 'admin' || (user?.rol === 'sensei' && equipo.dojoId?._id === user?.dojo?._id)) && (
                             <>
                               <button
+                                onClick={() => abrirModalAgregarParticipantes(equipo)}
+                                className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 text-xs font-bold"
+                                title="Agregar/Editar Participantes"
+                              >
+                                👥+
+                              </button>
+                              <button
                                 onClick={() => openModal('equipo', equipo)}
                                 className="text-blue-600 hover:text-blue-800"
                                 title="Editar"
@@ -1450,105 +1492,6 @@ function App() {
           </div>
         )}
 
-        {/* PANEL GENERAL TAB */}
-        {activeTab === 'panel-general' && (
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold text-black mb-6 text-center">
-              📋 Panel General de Competencia
-            </h2>
-
-            {user?.rol === 'admin' && (
-              <div className="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-6 border-4 border-black">
-                <label className="block text-xs md:text-sm font-bold text-black mb-2">
-                  <Filter className="w-3 h-3 md:w-4 md:h-4 inline mr-1" />
-                  Filtrar por dojo
-                </label>
-                <select
-                  value={selectedDojo}
-                  onChange={(e) => setSelectedDojo(e.target.value)}
-                  className="w-full px-3 md:px-4 py-2 text-sm md:text-base border-2 border-black rounded-lg focus:border-red-600 focus:ring-4 focus:ring-red-200 outline-none"
-                >
-                  <option value="">Todos los dojos</option>
-                  {dojos.map(dojo => (
-                    <option key={dojo._id} value={dojo._id}>{dojo.nombre}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {isLoading ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-red-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600 font-semibold">Cargando datos...</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {panelGeneral && panelGeneral.length > 0 ? (
-                panelGeneral.map((categoria, idx) => (
-                  <div key={idx} className="bg-white rounded-lg shadow-xl border-4 border-black overflow-hidden">
-                    <div className="bg-red-600 text-white px-4 md:px-6 py-3 md:py-4 border-b-4 border-black">
-                      <h3 className="text-lg md:text-xl font-bold">{categoria?.nombreCategoria || 'Categoría sin nombre'}</h3>
-                      <p className="text-xs md:text-sm mt-1">
-                        Total de equipos: <span className="font-bold">{categoria?.equipos?.length || 0}</span>
-                      </p>
-                    </div>
-
-                    <div className="p-4 md:p-6">
-                      {categoria?.equipos && categoria.equipos.length > 0 ? (
-                        <div className="space-y-4">
-                          {categoria.equipos.map((equipo, eqIdx) => (
-                            <div key={eqIdx} className="border-2 border-gray-200 rounded-lg p-4 hover:border-red-600 transition">
-                              <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2 mb-3">
-                                <div>
-                                  <h4 className="text-base md:text-lg font-bold text-black">{equipo?.nombre || 'Sin nombre'}</h4>
-                                  <p className="text-xs md:text-sm text-gray-600">{equipo?.dojo || 'Sin dojo'}</p>
-                                </div>
-                                <div className="flex gap-2">
-                                  <span className="bg-blue-100 text-blue-700 px-2 md:px-3 py-1 rounded-full text-xs font-bold">
-                                    {equipo?.cantidadMiembros || 0} integrantes
-                                  </span>
-                                  <span className="bg-gray-100 text-gray-700 px-2 md:px-3 py-1 rounded-full text-xs font-bold">
-                                    Equipo #{equipo?.numeroEquipo || 0}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="bg-gray-50 rounded-lg p-3">
-                                <p className="text-xs font-bold text-gray-600 mb-2">Integrantes:</p>
-                                {equipo?.miembros && equipo.miembros.length > 0 ? (
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                    {equipo.miembros.map((miembro, mIdx) => (
-                                      <div key={mIdx} className="bg-white rounded px-3 py-2 text-xs md:text-sm border border-gray-200">
-                                        <p className="font-semibold text-black">{miembro?.nombre || 'Sin nombre'}</p>
-                                        <p className="text-gray-600">{miembro?.edad || 0} años - {miembro?.genero || 'N/A'}</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="text-xs text-gray-500 italic">Sin miembros asignados</p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-center text-gray-500 py-8">No hay equipos registrados en esta categoría</p>
-                      )}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="bg-white rounded-lg shadow-xl border-4 border-black p-8 text-center">
-                  <p className="text-gray-500 text-lg">No hay datos para mostrar</p>
-                  <p className="text-gray-400 text-sm mt-2">Crea equipos primero para verlos aquí</p>
-                </div>
-              )}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {showModal && (
@@ -2197,6 +2140,128 @@ function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showAgregarParticipantesModal && equipoSeleccionado && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 md:p-4 z-50">
+          <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-4 md:p-6 border-b sticky top-0 bg-white z-10">
+              <h3 className="text-lg md:text-2xl font-bold text-gray-800">
+                👥 Agregar/Editar Participantes: {equipoSeleccionado.nombre}
+              </h3>
+              <button onClick={cerrarModalAgregarParticipantes} className="text-gray-500 hover:text-gray-700">
+                <X className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
+            </div>
+
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-bold text-blue-900 mb-2">📋 Información del Equipo</h4>
+                <p className="text-sm text-blue-800"><strong>Categoría:</strong> {equipoSeleccionado.categoriaId?.nombre}</p>
+                <p className="text-sm text-blue-800"><strong>Dojo:</strong> {equipoSeleccionado.dojoId?.nombre}</p>
+                <p className="text-sm text-blue-800"><strong>Límite de miembros:</strong> {configuracion.maxMiembrosEquipo || 3}</p>
+              </div>
+
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-bold text-green-900">✅ Participantes Seleccionados ({participantesSeleccionados.length}/{configuracion.maxMiembrosEquipo || 3})</h4>
+                  <button
+                    onClick={() => {
+                      cargarParticipantesDisponibles(equipoSeleccionado.categoriaId._id, equipoSeleccionado.dojoId._id, equipoSeleccionado._id);
+                    }}
+                    className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                  >
+                    🔄 Recargar lista
+                  </button>
+                </div>
+
+                {participantesSeleccionados.length > 0 ? (
+                  <div className="space-y-2">
+                    {participantesSeleccionados.map(pid => {
+                      const participante = [...participantesDisponibles, ...(equipoSeleccionado.miembros || [])]
+                        .find(p => (p._id || p) === pid);
+                      return participante ? (
+                        <div key={pid} className="bg-white rounded px-3 py-2 border border-green-300">
+                          <p className="font-semibold text-sm">{participante.nombre}</p>
+                          <p className="text-xs text-gray-600">{participante.edad} años - {participante.genero} - {participante.grado}</p>
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 italic">No hay participantes seleccionados</p>
+                )}
+              </div>
+
+              <div>
+                <h4 className="font-bold text-gray-900 mb-3">👤 Participantes Disponibles</h4>
+
+                {participantesDisponibles.length === 0 ? (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
+                    <p className="text-sm text-yellow-800 font-semibold">⚠️ No hay participantes disponibles</p>
+                    <p className="text-xs text-yellow-700 mt-1">
+                      Los participantes deben cumplir con los requisitos de edad y género de la categoría,
+                      y no estar asignados a otro equipo de la misma categoría.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {participantesDisponibles.map(p => (
+                      <label
+                        key={p._id}
+                        className={`flex items-center gap-3 p-3 rounded border cursor-pointer transition ${
+                          participantesSeleccionados.includes(p._id)
+                            ? 'bg-green-50 border-green-400'
+                            : 'bg-white border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={participantesSeleccionados.includes(p._id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              if (participantesSeleccionados.length >= (configuracion.maxMiembrosEquipo || 3)) {
+                                alert(`Máximo ${configuracion.maxMiembrosEquipo || 3} participantes por equipo`);
+                                return;
+                              }
+                              setParticipantesSeleccionados([...participantesSeleccionados, p._id]);
+                            } else {
+                              setParticipantesSeleccionados(participantesSeleccionados.filter(id => id !== p._id));
+                            }
+                          }}
+                          className="w-5 h-5"
+                        />
+                        <div className="flex-1">
+                          <p className="font-semibold text-sm">{p.nombre}</p>
+                          <p className="text-xs text-gray-600">
+                            {p.edad} años • {p.genero} • {p.grado} • {p.dojoId?.nombre}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={cerrarModalAgregarParticipantes}
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-600 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAgregarParticipantes}
+                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition"
+                >
+                  💾 Guardar Cambios
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
