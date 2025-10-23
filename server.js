@@ -70,17 +70,19 @@ const disciplinaSchema = new mongoose.Schema({
   activo: { type: Boolean, default: true }
 }, { timestamps: true });
 
-// Schema para Categorías (combinación de disciplina + rango + género)
+// Schema para Categorías (combinación de disciplina + rango + género + nivel)
 const categoriaSchema = new mongoose.Schema({
-  nombre: { type: String, required: true, trim: true }, // auto-generado: "Kata Mixto 12-15"
+  nombre: { type: String, required: true, trim: true }, // auto-generado: "Kata Novicio Damas 6-8"
   disciplinaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Disciplina', required: true },
   rangoEdadId: { type: mongoose.Schema.Types.ObjectId, ref: 'RangoEdad', required: true },
   genero: { type: String, enum: ['Masculino', 'Femenino', 'Mixto'] },
+  nivel: { type: String, enum: ['Novicio', 'Avanzado', 'Libre'], default: 'Libre' }, // Para Kata: Novicio (10-7 KYU), Avanzado (6 KYU-DAN)
+  modalidad: { type: String, enum: ['Individual', 'Equipos'], required: true }, // Individual o Equipos
   activo: { type: Boolean, default: true }
 }, { timestamps: true });
 
 // Índice único para evitar categorías duplicadas
-categoriaSchema.index({ disciplinaId: 1, rangoEdadId: 1, genero: 1 }, { unique: true });
+categoriaSchema.index({ disciplinaId: 1, rangoEdadId: 1, genero: 1, nivel: 1, modalidad: 1 }, { unique: true });
 
 // Schema para Equipos
 const equipoSchema = new mongoose.Schema({
@@ -110,6 +112,49 @@ const configuracionSchema = new mongoose.Schema({
   descripcion: { type: String }
 }, { timestamps: true });
 
+// Schema para Brackets de Competición
+const bracketSchema = new mongoose.Schema({
+  categoriaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Categoria', required: true, unique: true },
+  modalidad: { type: String, enum: ['Individual', 'Equipos'], required: true },
+  tokenPublico: { type: String, unique: true }, // Para compartir con senseis
+  rondas: [{
+    numeroRonda: { type: Number, required: true }, // 1 = Primera ronda, 2 = Cuartos, etc.
+    nombreRonda: { type: String }, // "Primera Ronda", "Cuartos de Final", "Semifinal", "Final"
+    combates: [{
+      numeroCombate: { type: Number, required: true }, // Número secuencial único
+      orden: { type: Number }, // Orden de ejecución (editable)
+      competidor1: {
+        tipo: { type: String, enum: ['Participante', 'Equipo'] },
+        id: { type: mongoose.Schema.Types.ObjectId, refPath: 'rondas.combates.competidor1.tipo' },
+        esBye: { type: Boolean, default: false } // true si pasa automáticamente
+      },
+      competidor2: {
+        tipo: { type: String, enum: ['Participante', 'Equipo'] },
+        id: { type: mongoose.Schema.Types.ObjectId, refPath: 'rondas.combates.competidor2.tipo' },
+        esBye: { type: Boolean, default: false }
+      },
+      ganador: {
+        tipo: { type: String, enum: ['Participante', 'Equipo'] },
+        id: { type: mongoose.Schema.Types.ObjectId, refPath: 'rondas.combates.ganador.tipo' }
+      },
+      tatami: { type: Number }, // Opcional, asignado por admin
+      estado: {
+        type: String,
+        enum: ['pendiente', 'en_curso', 'finalizado'],
+        default: 'pendiente'
+      },
+      notas: { type: String } // Espacio para anotaciones del admin
+    }]
+  }],
+  totalCompetidores: { type: Number, required: true },
+  estado: {
+    type: String,
+    enum: ['generado', 'en_curso', 'finalizado'],
+    default: 'generado'
+  },
+  creadoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Sensei', required: true }
+}, { timestamps: true });
+
 const Dojo = mongoose.model('Dojo', dojoSchema);
 const Sensei = mongoose.model('Sensei', senseiSchema);
 const Participante = mongoose.model('Participante', participanteSchema);
@@ -118,6 +163,7 @@ const Disciplina = mongoose.model('Disciplina', disciplinaSchema);
 const Categoria = mongoose.model('Categoria', categoriaSchema);
 const Equipo = mongoose.model('Equipo', equipoSchema);
 const Configuracion = mongoose.model('Configuracion', configuracionSchema);
+const Bracket = mongoose.model('Bracket', bracketSchema);
 
 // Función para inicializar admin
 async function initAdmin() {
@@ -169,11 +215,27 @@ async function initSistema() {
       console.log('✅ Configuración de min miembros creada: 3');
     }
 
-    // Inicializar Disciplinas
+    // Inicializar Disciplinas - TODAS las modalidades del torneo
     const disciplinasDefault = [
-      { nombre: 'Kata Equipos', codigo: 'kata', requiereGenero: false, mixto: true },
-      { nombre: 'Kumite Equipos', codigo: 'kumite', requiereGenero: true, mixto: false }
+      { nombre: 'Kata Individual', codigo: 'kata-individual', requiereGenero: true, mixto: false },
+      { nombre: 'Kata Equipos', codigo: 'kata-equipos', requiereGenero: false, mixto: true },
+      { nombre: 'Kumite Individual', codigo: 'kumite-individual', requiereGenero: true, mixto: false },
+      { nombre: 'Kumite Equipos', codigo: 'kumite-equipos', requiereGenero: true, mixto: false },
+      { nombre: 'Kihon Ippon', codigo: 'kihon-ippon', requiereGenero: true, mixto: false }
     ];
+
+    // Migrar disciplinas antiguas si existen
+    const kataViejo = await Disciplina.findOne({ codigo: 'kata' });
+    if (kataViejo) {
+      await Disciplina.updateOne({ codigo: 'kata' }, { $set: { codigo: 'kata-equipos' } });
+      console.log('✅ Disciplina migrada: kata -> kata-equipos');
+    }
+
+    const kumiteViejo = await Disciplina.findOne({ codigo: 'kumite' });
+    if (kumiteViejo) {
+      await Disciplina.updateOne({ codigo: 'kumite' }, { $set: { codigo: 'kumite-equipos' } });
+      console.log('✅ Disciplina migrada: kumite -> kumite-equipos');
+    }
 
     for (const disc of disciplinasDefault) {
       const existe = await Disciplina.findOne({ codigo: disc.codigo });
@@ -183,16 +245,28 @@ async function initSistema() {
       }
     }
 
-    // Inicializar Rangos de Edad
+    // Inicializar Rangos de Edad - Todos los rangos necesarios
     const rangosDefault = [
-      { nombre: '0-11', edadMin: 0, edadMax: 11 },
-      { nombre: '12-15', edadMin: 12, edadMax: 15 },
-      { nombre: '16-19', edadMin: 16, edadMax: 19 },
-      { nombre: '20-39', edadMin: 20, edadMax: 39 },
-      { nombre: '40+', edadMin: 40, edadMax: 150 },
+      { nombre: '6-8', edadMin: 6, edadMax: 8 },
+      { nombre: '9-10', edadMin: 9, edadMax: 10 },
+      { nombre: '9-11', edadMin: 9, edadMax: 11 },
+      { nombre: '11-12', edadMin: 11, edadMax: 12 },
       { nombre: '11-13', edadMin: 11, edadMax: 13 },
+      { nombre: '12-14', edadMin: 12, edadMax: 14 },
+      { nombre: '12-15', edadMin: 12, edadMax: 15 },
+      { nombre: '13-14', edadMin: 13, edadMax: 14 },
       { nombre: '14-16', edadMin: 14, edadMax: 16 },
-      { nombre: '17-19', edadMin: 17, edadMax: 19 }
+      { nombre: '15-16', edadMin: 15, edadMax: 16 },
+      { nombre: '15-17', edadMin: 15, edadMax: 17 },
+      { nombre: '16-19', edadMin: 16, edadMax: 19 },
+      { nombre: '17-18', edadMin: 17, edadMax: 18 },
+      { nombre: '17-19', edadMin: 17, edadMax: 19 },
+      { nombre: '18-20', edadMin: 18, edadMax: 20 },
+      { nombre: '19-20', edadMin: 19, edadMax: 20 },
+      { nombre: '20-39', edadMin: 20, edadMax: 39 },
+      { nombre: '21-39', edadMin: 21, edadMax: 39 },
+      { nombre: '40+', edadMin: 40, edadMax: 150 },
+      { nombre: 'hasta 11', edadMin: 0, edadMax: 11 }
     ];
 
     for (const rango of rangosDefault) {
@@ -203,58 +277,77 @@ async function initSistema() {
       }
     }
 
-    // Inicializar Categorías
-    const kata = await Disciplina.findOne({ codigo: 'kata' });
-    const kumite = await Disciplina.findOne({ codigo: 'kumite' });
+    // Obtener disciplinas
+    const kataIndividual = await Disciplina.findOne({ codigo: 'kata-individual' });
+    const kataEquipos = await Disciplina.findOne({ codigo: 'kata-equipos' });
+    const kumiteIndividual = await Disciplina.findOne({ codigo: 'kumite-individual' });
+    const kumiteEquipos = await Disciplina.findOne({ codigo: 'kumite-equipos' });
+    const kihonIppon = await Disciplina.findOne({ codigo: 'kihon-ippon' });
 
-    if (kata) {
-      const rangosKata = await RangoEdad.find({
-        nombre: { $in: ['0-11', '12-15', '16-19', '20-39', '40+'] }
+    // Crear función auxiliar para crear categorías
+    const crearCategoria = async (nombre, disciplinaId, rangoNombre, genero, nivel, modalidad) => {
+      const rango = await RangoEdad.findOne({ nombre: rangoNombre });
+      if (!rango || !disciplinaId) return;
+
+      const existe = await Categoria.findOne({
+        disciplinaId,
+        rangoEdadId: rango._id,
+        genero,
+        nivel,
+        modalidad
       });
 
-      for (const rango of rangosKata) {
-        const existe = await Categoria.findOne({
-          disciplinaId: kata._id,
+      if (!existe) {
+        await Categoria.create({
+          nombre,
+          disciplinaId,
           rangoEdadId: rango._id,
-          genero: 'Mixto'
+          genero,
+          nivel,
+          modalidad
         });
-
-        if (!existe) {
-          await Categoria.create({
-            nombre: `Kata Mixto ${rango.nombre}`,
-            disciplinaId: kata._id,
-            rangoEdadId: rango._id,
-            genero: 'Mixto'
-          });
-          console.log(`✅ Categoría creada: Kata Mixto ${rango.nombre}`);
-        }
+        console.log(`✅ Categoría creada: ${nombre}`);
       }
+    };
+
+    // KATA INDIVIDUAL - Novicio (10°-7° KYU)
+    const rangosKataNovicio = ['6-8', '9-11', '12-14', '15-17', '18-20', '21-39', '40+'];
+    for (const rango of rangosKataNovicio) {
+      await crearCategoria(`Kata Novicio Damas ${rango}`, kataIndividual._id, rango, 'Femenino', 'Novicio', 'Individual');
+      await crearCategoria(`Kata Novicio Varones ${rango}`, kataIndividual._id, rango, 'Masculino', 'Novicio', 'Individual');
     }
 
-    if (kumite) {
-      const rangosKumite = await RangoEdad.find({
-        nombre: { $in: ['11-13', '14-16', '17-19', '20-39', '40+'] }
-      });
+    // KATA INDIVIDUAL - Avanzado (6° KYU-DAN)
+    const rangosKataAvanzado = ['6-8', '9-11', '12-14', '15-17', '18-20', '21-39', '40+'];
+    for (const rango of rangosKataAvanzado) {
+      await crearCategoria(`Kata Avanzado Damas ${rango}`, kataIndividual._id, rango, 'Femenino', 'Avanzado', 'Individual');
+      await crearCategoria(`Kata Avanzado Varones ${rango}`, kataIndividual._id, rango, 'Masculino', 'Avanzado', 'Individual');
+    }
 
-      for (const rango of rangosKumite) {
-        for (const genero of ['Masculino', 'Femenino']) {
-          const existe = await Categoria.findOne({
-            disciplinaId: kumite._id,
-            rangoEdadId: rango._id,
-            genero
-          });
+    // KATA EQUIPOS - Mixto (sin nivel)
+    const rangosKataEquipos = ['hasta 11', '12-15', '16-19', '20-39', '40+'];
+    for (const rango of rangosKataEquipos) {
+      await crearCategoria(`Kata Equipo Mixto ${rango}`, kataEquipos._id, rango, 'Mixto', 'Libre', 'Equipos');
+    }
 
-          if (!existe) {
-            await Categoria.create({
-              nombre: `Kumite ${genero === 'Masculino' ? 'Varones' : 'Damas'} ${rango.nombre}`,
-              disciplinaId: kumite._id,
-              rangoEdadId: rango._id,
-              genero
-            });
-            console.log(`✅ Categoría creada: Kumite ${genero === 'Masculino' ? 'Varones' : 'Damas'} ${rango.nombre}`);
-          }
-        }
-      }
+    // KIHON IPPON
+    await crearCategoria('Kihon Ippon Femenino 6-8', kihonIppon._id, '6-8', 'Femenino', 'Libre', 'Individual');
+    await crearCategoria('Kihon Ippon Masculino 6-8', kihonIppon._id, '6-8', 'Masculino', 'Libre', 'Individual');
+    await crearCategoria('Kihon Ippon Femenino 9-10', kihonIppon._id, '9-10', 'Femenino', 'Libre', 'Individual');
+    await crearCategoria('Kihon Ippon Masculino 9-10', kihonIppon._id, '9-10', 'Masculino', 'Libre', 'Individual');
+
+    // KUMITE INDIVIDUAL - Libre (sin grado)
+    const rangosKumiteIndividual = ['11-12', '13-14', '15-16', '17-18', '19-20', '21-39', '40+'];
+    for (const rango of rangosKumiteIndividual) {
+      await crearCategoria(`Kumite Libre Damas ${rango}`, kumiteIndividual._id, rango, 'Femenino', 'Libre', 'Individual');
+      await crearCategoria(`Kumite Libre Varones ${rango}`, kumiteIndividual._id, rango, 'Masculino', 'Libre', 'Individual');
+    }
+
+    // KUMITE EQUIPOS - Por género (sin grado)
+    const rangosKumiteEquipos = ['11-13', '14-16', '17-19', '20-39', '40+'];
+    for (const rango of rangosKumiteEquipos) {
+      await crearCategoria(`Kumite Equipos Damas ${rango}`, kumiteEquipos._id, rango, 'Femenino', 'Libre', 'Equipos');
+      await crearCategoria(`Kumite Equipos Varones ${rango}`, kumiteEquipos._id, rango, 'Masculino', 'Libre', 'Equipos');
     }
 
   } catch (error) {
@@ -1215,6 +1308,947 @@ app.get('/api/panel-general', auth, async (req, res) => {
     res.json(resultado);
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener panel general' });
+  }
+});
+
+// ============================================
+// FUNCIONES AUXILIARES PARA BRACKETS
+// ============================================
+
+// Función para obtener la próxima potencia de 2
+function getNextPowerOf2(n) {
+  let power = 1;
+  while (power < n) {
+    power *= 2;
+  }
+  return power;
+}
+
+// Función para determinar el nombre de la ronda
+function getNombreRonda(numeroRonda, totalRondas) {
+  const rondasFaltantes = totalRondas - numeroRonda + 1;
+  if (rondasFaltantes === 1) return 'Final';
+  if (rondasFaltantes === 2) return 'Semifinal';
+  if (rondasFaltantes === 3) return 'Cuartos de Final';
+  if (rondasFaltantes === 4) return 'Octavos de Final';
+  return `Ronda ${numeroRonda}`;
+}
+
+// Algoritmo de generación de brackets con separación de dojos (PRIORIDAD ALTA)
+function generarBracket(competidores, modalidad) {
+  const totalCompetidores = competidores.length;
+  const bracketSize = getNextPowerOf2(totalCompetidores);
+  const totalByes = bracketSize - totalCompetidores;
+
+  // Agrupar competidores por dojo
+  const porDojo = {};
+  competidores.forEach(comp => {
+    const dojoId = comp.dojoId._id.toString();
+    if (!porDojo[dojoId]) {
+      porDojo[dojoId] = [];
+    }
+    porDojo[dojoId].push(comp);
+  });
+
+  const dojos = Object.keys(porDojo);
+
+  // Estrategia: Distribuir competidores del mismo dojo en diferentes mitades del bracket
+  // para evitar enfrentamientos tempranos
+  let bracket = [];
+
+  if (dojos.length === 1) {
+    // Si todos son del mismo dojo, simplemente aleatorizar
+    bracket = [...competidores].sort(() => Math.random() - 0.5);
+  } else {
+    // Distribuir competidores alternando entre dojos
+    const competidoresPorDojo = dojos.map(dojoId => ({
+      dojoId,
+      competidores: [...porDojo[dojoId]].sort(() => Math.random() - 0.5)
+    }));
+
+    // Ordenar dojos por cantidad de competidores (mayor a menor)
+    competidoresPorDojo.sort((a, b) => b.competidores.length - a.competidores.length);
+
+    // Distribuir en serpiente: primera mitad y segunda mitad alternadas
+    const mitad1 = [];
+    const mitad2 = [];
+
+    competidoresPorDojo.forEach((dojo, idx) => {
+      dojo.competidores.forEach((comp, compIdx) => {
+        // Alternar entre mitades para cada competidor del dojo
+        if (compIdx % 2 === 0) {
+          mitad1.push(comp);
+        } else {
+          mitad2.push(comp);
+        }
+      });
+    });
+
+    // Intercalar entre mitades
+    bracket = [...mitad1, ...mitad2];
+  }
+
+  // Insertar byes de manera distribuida
+  if (totalByes > 0) {
+    const byesPositions = [];
+    const step = Math.floor(bracket.length / totalByes) || 1;
+
+    for (let i = 0; i < totalByes; i++) {
+      byesPositions.push(i * step);
+    }
+
+    // Insertar byes en las posiciones calculadas
+    byesPositions.reverse().forEach(pos => {
+      bracket.splice(pos, 0, null); // null = bye
+    });
+  }
+
+  // Generar rondas
+  const totalRondas = Math.log2(bracketSize);
+  const rondas = [];
+  let numeroCombateGlobal = 1;
+
+  // Primera ronda
+  const primeraRonda = {
+    numeroRonda: 1,
+    nombreRonda: getNombreRonda(1, totalRondas),
+    combates: []
+  };
+
+  for (let i = 0; i < bracket.length; i += 2) {
+    const comp1 = bracket[i];
+    const comp2 = bracket[i + 1];
+
+    const combate = {
+      numeroCombate: numeroCombateGlobal++,
+      orden: primeraRonda.combates.length + 1,
+      competidor1: comp1 ? {
+        tipo: modalidad,
+        id: comp1._id,
+        esBye: false
+      } : {
+        tipo: modalidad,
+        id: null,
+        esBye: true
+      },
+      competidor2: comp2 ? {
+        tipo: modalidad,
+        id: comp2._id,
+        esBye: false
+      } : {
+        tipo: modalidad,
+        id: null,
+        esBye: true
+      },
+      ganador: {},
+      estado: 'pendiente'
+    };
+
+    // Si hay bye, establecer ganador automático
+    if (!comp1 && comp2) {
+      combate.ganador = { tipo: modalidad, id: comp2._id };
+      combate.estado = 'finalizado';
+    } else if (comp1 && !comp2) {
+      combate.ganador = { tipo: modalidad, id: comp1._id };
+      combate.estado = 'finalizado';
+    }
+
+    primeraRonda.combates.push(combate);
+  }
+
+  rondas.push(primeraRonda);
+
+  // Rondas subsecuentes (vacías, se llenan con ganadores)
+  for (let ronda = 2; ronda <= totalRondas; ronda++) {
+    const combatesPorRonda = Math.pow(2, totalRondas - ronda);
+    const rondaObj = {
+      numeroRonda: ronda,
+      nombreRonda: getNombreRonda(ronda, totalRondas),
+      combates: []
+    };
+
+    for (let i = 0; i < combatesPorRonda; i++) {
+      rondaObj.combates.push({
+        numeroCombate: numeroCombateGlobal++,
+        orden: i + 1,
+        competidor1: { tipo: modalidad, id: null, esBye: false },
+        competidor2: { tipo: modalidad, id: null, esBye: false },
+        ganador: {},
+        estado: 'pendiente'
+      });
+    }
+
+    rondas.push(rondaObj);
+  }
+
+  return rondas;
+}
+
+// Función para generar token público único
+function generarTokenPublico() {
+  return require('crypto').randomBytes(16).toString('hex');
+}
+
+// ============================================
+// ENDPOINTS DE BRACKETS
+// ============================================
+
+// Generar brackets para todas las categorías (solo admin)
+app.post('/api/brackets/generar', auth, async (req, res) => {
+  try {
+    if (req.user.rol !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden generar brackets' });
+    }
+
+    const categorias = await Categoria.find({ activo: true })
+      .populate('disciplinaId')
+      .populate('rangoEdadId');
+
+    const resultados = {
+      generados: [],
+      advertencias: [],
+      errores: []
+    };
+
+    for (const categoria of categorias) {
+      try {
+        // Verificar si ya existe bracket para esta categoría
+        const bracketExistente = await Bracket.findOne({ categoriaId: categoria._id });
+        if (bracketExistente) {
+          resultados.advertencias.push({
+            categoria: categoria.nombre,
+            mensaje: 'Ya existe un bracket para esta categoría'
+          });
+          continue;
+        }
+
+        let competidores = [];
+        const modalidad = categoria.modalidad;
+
+        // Obtener competidores según modalidad
+        if (modalidad === 'Individual') {
+          // Obtener participantes inscritos en la modalidad correcta
+          const modalidadField = categoria.disciplinaId.codigo === 'kata-individual' ? 'kataIndividual' :
+                                 categoria.disciplinaId.codigo === 'kumite-individual' ? 'kumiteIndividual' :
+                                 'kihonIppon';
+
+          const query = {
+            [`modalidades.${modalidadField}`]: true,
+            edad: { $gte: categoria.rangoEdadId.edadMin, $lte: categoria.rangoEdadId.edadMax }
+          };
+
+          // Filtrar por género si no es mixto
+          if (categoria.genero !== 'Mixto') {
+            query.genero = categoria.genero;
+          }
+
+          // Filtrar por nivel (grado) si aplica
+          if (categoria.nivel === 'Novicio') {
+            query.grado = { $in: ['10 Kyu', '9 Kyu', '8 Kyu', '7 Kyu'] };
+          } else if (categoria.nivel === 'Avanzado') {
+            query.grado = { $in: ['6 Kyu', '5 Kyu', '4 Kyu', '3 Kyu', '2 Kyu', '1 Kyu', 'Dan'] };
+          }
+
+          competidores = await Participante.find(query).populate('dojoId');
+        } else if (modalidad === 'Equipos') {
+          // Obtener equipos de la categoría
+          competidores = await Equipo.find({
+            categoriaId: categoria._id,
+            estado: 'activo'
+          }).populate('dojoId').populate('miembros');
+        }
+
+        // Validar número de competidores
+        if (competidores.length === 0) {
+          resultados.advertencias.push({
+            categoria: categoria.nombre,
+            mensaje: 'No hay competidores inscritos en esta categoría'
+          });
+          continue;
+        }
+
+        if (competidores.length === 1) {
+          resultados.advertencias.push({
+            categoria: categoria.nombre,
+            mensaje: 'Solo hay 1 competidor inscrito',
+            competidor: modalidad === 'Individual' ? competidores[0].nombre : competidores[0].nombre
+          });
+          continue;
+        }
+
+        // Generar bracket
+        const rondas = generarBracket(competidores, modalidad);
+
+        const bracket = await Bracket.create({
+          categoriaId: categoria._id,
+          modalidad,
+          tokenPublico: generarTokenPublico(),
+          rondas,
+          totalCompetidores: competidores.length,
+          estado: 'generado',
+          creadoPor: req.user._id
+        });
+
+        resultados.generados.push({
+          categoria: categoria.nombre,
+          bracketId: bracket._id,
+          competidores: competidores.length,
+          rondas: rondas.length
+        });
+
+      } catch (error) {
+        resultados.errores.push({
+          categoria: categoria.nombre,
+          error: error.message
+        });
+      }
+    }
+
+    res.json(resultados);
+
+  } catch (error) {
+    res.status(500).json({ error: 'Error al generar brackets' });
+  }
+});
+
+// Listar todos los brackets
+app.get('/api/brackets', auth, async (req, res) => {
+  try {
+    const query = {};
+
+    // Si es sensei, filtrar por brackets donde participan sus atletas
+    if (req.user.rol === 'sensei') {
+      // Obtener categorías donde participan sus atletas/equipos
+      const participantesIds = await Participante.find({ dojoId: req.user.dojoId }).distinct('_id');
+      const equiposIds = await Equipo.find({ dojoId: req.user.dojoId }).distinct('_id');
+
+      // Buscar brackets que contengan estos IDs en sus rondas
+      const brackets = await Bracket.find()
+        .populate({
+          path: 'categoriaId',
+          populate: [
+            { path: 'disciplinaId' },
+            { path: 'rangoEdadId' }
+          ]
+        })
+        .lean();
+
+      // Filtrar brackets donde participan
+      const bracketsFiltered = brackets.filter(bracket => {
+        return bracket.rondas.some(ronda =>
+          ronda.combates.some(combate => {
+            const comp1Id = combate.competidor1?.id?.toString();
+            const comp2Id = combate.competidor2?.id?.toString();
+
+            if (bracket.modalidad === 'Individual') {
+              return participantesIds.some(pid =>
+                pid.toString() === comp1Id || pid.toString() === comp2Id
+              );
+            } else {
+              return equiposIds.some(eid =>
+                eid.toString() === comp1Id || eid.toString() === comp2Id
+              );
+            }
+          })
+        );
+      });
+
+      return res.json(bracketsFiltered);
+    }
+
+    // Admin ve todos
+    const brackets = await Bracket.find(query)
+      .populate({
+        path: 'categoriaId',
+        populate: [
+          { path: 'disciplinaId' },
+          { path: 'rangoEdadId' }
+        ]
+      })
+      .sort({ createdAt: -1 });
+
+    res.json(brackets);
+
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener brackets' });
+  }
+});
+
+// Obtener bracket específico con población completa
+app.get('/api/brackets/:id', auth, async (req, res) => {
+  try {
+    const bracket = await Bracket.findById(req.params.id)
+      .populate({
+        path: 'categoriaId',
+        populate: [
+          { path: 'disciplinaId' },
+          { path: 'rangoEdadId' }
+        ]
+      })
+      .lean();
+
+    if (!bracket) {
+      return res.status(404).json({ error: 'Bracket no encontrado' });
+    }
+
+    // Poblar competidores en cada combate
+    for (const ronda of bracket.rondas) {
+      for (const combate of ronda.combates) {
+        if (combate.competidor1?.id && !combate.competidor1.esBye) {
+          if (bracket.modalidad === 'Individual') {
+            combate.competidor1.datos = await Participante.findById(combate.competidor1.id).populate('dojoId').lean();
+          } else {
+            combate.competidor1.datos = await Equipo.findById(combate.competidor1.id).populate('dojoId').populate('miembros').lean();
+          }
+        }
+
+        if (combate.competidor2?.id && !combate.competidor2.esBye) {
+          if (bracket.modalidad === 'Individual') {
+            combate.competidor2.datos = await Participante.findById(combate.competidor2.id).populate('dojoId').lean();
+          } else {
+            combate.competidor2.datos = await Equipo.findById(combate.competidor2.id).populate('dojoId').populate('miembros').lean();
+          }
+        }
+
+        if (combate.ganador?.id) {
+          if (bracket.modalidad === 'Individual') {
+            combate.ganador.datos = await Participante.findById(combate.ganador.id).populate('dojoId').lean();
+          } else {
+            combate.ganador.datos = await Equipo.findById(combate.ganador.id).populate('dojoId').populate('miembros').lean();
+          }
+        }
+      }
+    }
+
+    res.json(bracket);
+
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener bracket' });
+  }
+});
+
+// Actualizar resultado de combate
+app.put('/api/brackets/:id/combate/:rondaNum/:combateNum', auth, async (req, res) => {
+  try {
+    if (req.user.rol !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden actualizar resultados' });
+    }
+
+    const { id, rondaNum, combateNum } = req.params;
+    const { ganadorId, tatami, notas } = req.body;
+
+    const bracket = await Bracket.findById(id);
+    if (!bracket) {
+      return res.status(404).json({ error: 'Bracket no encontrado' });
+    }
+
+    const ronda = bracket.rondas.find(r => r.numeroRonda === parseInt(rondaNum));
+    if (!ronda) {
+      return res.status(404).json({ error: 'Ronda no encontrada' });
+    }
+
+    const combate = ronda.combates.find(c => c.numeroCombate === parseInt(combateNum));
+    if (!combate) {
+      return res.status(404).json({ error: 'Combate no encontrado' });
+    }
+
+    // Actualizar ganador
+    if (ganadorId) {
+      combate.ganador = {
+        tipo: bracket.modalidad,
+        id: ganadorId
+      };
+      combate.estado = 'finalizado';
+
+      // Avanzar ganador a siguiente ronda
+      if (parseInt(rondaNum) < bracket.rondas.length) {
+        const siguienteRonda = bracket.rondas.find(r => r.numeroRonda === parseInt(rondaNum) + 1);
+        if (siguienteRonda) {
+          const indiceCombateSiguiente = Math.floor((combate.orden - 1) / 2);
+          const esPrimerCompetidor = (combate.orden - 1) % 2 === 0;
+
+          if (siguienteRonda.combates[indiceCombateSiguiente]) {
+            if (esPrimerCompetidor) {
+              siguienteRonda.combates[indiceCombateSiguiente].competidor1 = {
+                tipo: bracket.modalidad,
+                id: ganadorId,
+                esBye: false
+              };
+            } else {
+              siguienteRonda.combates[indiceCombateSiguiente].competidor2 = {
+                tipo: bracket.modalidad,
+                id: ganadorId,
+                esBye: false
+              };
+            }
+          }
+        }
+      }
+    }
+
+    // Actualizar tatami y notas
+    if (tatami !== undefined) combate.tatami = tatami;
+    if (notas !== undefined) combate.notas = notas;
+
+    // Verificar si todos los combates están finalizados
+    const todosCombatesFinalizados = bracket.rondas.every(r =>
+      r.combates.every(c => c.estado === 'finalizado')
+    );
+
+    if (todosCombatesFinalizados) {
+      bracket.estado = 'finalizado';
+    } else {
+      bracket.estado = 'en_curso';
+    }
+
+    await bracket.save();
+
+    res.json(bracket);
+
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar combate' });
+  }
+});
+
+// Eliminar bracket de una categoría para regenerar
+app.delete('/api/brackets/:categoriaId', auth, async (req, res) => {
+  try {
+    if (req.user.rol !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden eliminar brackets' });
+    }
+
+    const bracket = await Bracket.findOne({ categoriaId: req.params.categoriaId });
+
+    if (!bracket) {
+      return res.status(404).json({ error: 'Bracket no encontrado' });
+    }
+
+    await Bracket.deleteOne({ _id: bracket._id });
+
+    res.json({ message: 'Bracket eliminado correctamente' });
+
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar bracket' });
+  }
+});
+
+// Editar emparejamientos (intercambiar competidores)
+app.put('/api/brackets/:id/emparejamientos', auth, async (req, res) => {
+  try {
+    if (req.user.rol !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden editar emparejamientos' });
+    }
+
+    const { intercambios } = req.body; // Array de {combate1: {ronda, combate, posicion}, combate2: {ronda, combate, posicion}}
+
+    const bracket = await Bracket.findById(req.params.id);
+    if (!bracket) {
+      return res.status(404).json({ error: 'Bracket no encontrado' });
+    }
+
+    // Realizar intercambios
+    for (const intercambio of intercambios) {
+      const ronda1 = bracket.rondas.find(r => r.numeroRonda === intercambio.combate1.ronda);
+      const combate1 = ronda1?.combates.find(c => c.numeroCombate === intercambio.combate1.combate);
+
+      const ronda2 = bracket.rondas.find(r => r.numeroRonda === intercambio.combate2.ronda);
+      const combate2 = ronda2?.combates.find(c => c.numeroCombate === intercambio.combate2.combate);
+
+      if (combate1 && combate2) {
+        const temp = combate1[intercambio.combate1.posicion];
+        combate1[intercambio.combate1.posicion] = combate2[intercambio.combate2.posicion];
+        combate2[intercambio.combate2.posicion] = temp;
+      }
+    }
+
+    await bracket.save();
+
+    res.json(bracket);
+
+  } catch (error) {
+    res.status(500).json({ error: 'Error al editar emparejamientos' });
+  }
+});
+
+// Cambiar orden de combates
+app.put('/api/brackets/:id/orden', auth, async (req, res) => {
+  try {
+    if (req.user.rol !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden cambiar el orden' });
+    }
+
+    const { rondaNum, nuevosOrdenes } = req.body; // nuevosOrdenes: [{numeroCombate, nuevoOrden}]
+
+    const bracket = await Bracket.findById(req.params.id);
+    if (!bracket) {
+      return res.status(404).json({ error: 'Bracket no encontrado' });
+    }
+
+    const ronda = bracket.rondas.find(r => r.numeroRonda === rondaNum);
+    if (!ronda) {
+      return res.status(404).json({ error: 'Ronda no encontrada' });
+    }
+
+    // Actualizar órdenes
+    for (const cambio of nuevosOrdenes) {
+      const combate = ronda.combates.find(c => c.numeroCombate === cambio.numeroCombate);
+      if (combate) {
+        combate.orden = cambio.nuevoOrden;
+      }
+    }
+
+    await bracket.save();
+
+    res.json(bracket);
+
+  } catch (error) {
+    res.status(500).json({ error: 'Error al cambiar orden de combates' });
+  }
+});
+
+// Duplicar bracket a otra categoría
+app.post('/api/brackets/:id/duplicar', auth, async (req, res) => {
+  try {
+    if (req.user.rol !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden duplicar brackets' });
+    }
+
+    const { categoriaIdDestino } = req.body;
+
+    const bracketOriginal = await Bracket.findById(req.params.id).lean();
+    if (!bracketOriginal) {
+      return res.status(404).json({ error: 'Bracket original no encontrado' });
+    }
+
+    // Verificar que no exista bracket en categoría destino
+    const existe = await Bracket.findOne({ categoriaId: categoriaIdDestino });
+    if (existe) {
+      return res.status(400).json({ error: 'Ya existe un bracket en la categoría destino' });
+    }
+
+    // Crear copia con nueva categoría
+    const nuevoBracket = {
+      ...bracketOriginal,
+      _id: undefined,
+      categoriaId: categoriaIdDestino,
+      tokenPublico: generarTokenPublico(),
+      creadoPor: req.user._id
+    };
+
+    const bracketCreado = await Bracket.create(nuevoBracket);
+
+    res.json(bracketCreado);
+
+  } catch (error) {
+    res.status(500).json({ error: 'Error al duplicar bracket' });
+  }
+});
+
+// Resetear bracket (borrar todos los resultados)
+app.put('/api/brackets/:id/resetear', auth, async (req, res) => {
+  try {
+    if (req.user.rol !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden resetear brackets' });
+    }
+
+    const bracket = await Bracket.findById(req.params.id);
+    if (!bracket) {
+      return res.status(404).json({ error: 'Bracket no encontrado' });
+    }
+
+    // Resetear todos los combates (excepto byes automáticos)
+    for (const ronda of bracket.rondas) {
+      for (const combate of ronda.combates) {
+        // Solo resetear si no es un bye automático
+        if (!combate.competidor1.esBye && !combate.competidor2.esBye) {
+          combate.ganador = {};
+          combate.estado = 'pendiente';
+          combate.tatami = undefined;
+          combate.notas = undefined;
+        }
+      }
+    }
+
+    // Limpiar competidores de rondas posteriores a la primera
+    for (let i = 1; i < bracket.rondas.length; i++) {
+      for (const combate of bracket.rondas[i].combates) {
+        combate.competidor1 = { tipo: bracket.modalidad, id: null, esBye: false };
+        combate.competidor2 = { tipo: bracket.modalidad, id: null, esBye: false };
+        combate.ganador = {};
+        combate.estado = 'pendiente';
+      }
+    }
+
+    bracket.estado = 'generado';
+    await bracket.save();
+
+    res.json(bracket);
+
+  } catch (error) {
+    res.status(500).json({ error: 'Error al resetear bracket' });
+  }
+});
+
+// Obtener bracket público (sin autenticación, con token)
+app.get('/api/brackets/publico/:token', async (req, res) => {
+  try {
+    const bracket = await Bracket.findOne({ tokenPublico: req.params.token })
+      .populate({
+        path: 'categoriaId',
+        populate: [
+          { path: 'disciplinaId' },
+          { path: 'rangoEdadId' }
+        ]
+      })
+      .lean();
+
+    if (!bracket) {
+      return res.status(404).json({ error: 'Bracket no encontrado' });
+    }
+
+    // Poblar competidores
+    for (const ronda of bracket.rondas) {
+      for (const combate of ronda.combates) {
+        if (combate.competidor1?.id && !combate.competidor1.esBye) {
+          if (bracket.modalidad === 'Individual') {
+            combate.competidor1.datos = await Participante.findById(combate.competidor1.id).populate('dojoId').lean();
+          } else {
+            combate.competidor1.datos = await Equipo.findById(combate.competidor1.id).populate('dojoId').populate('miembros').lean();
+          }
+        }
+
+        if (combate.competidor2?.id && !combate.competidor2.esBye) {
+          if (bracket.modalidad === 'Individual') {
+            combate.competidor2.datos = await Participante.findById(combate.competidor2.id).populate('dojoId').lean();
+          } else {
+            combate.competidor2.datos = await Equipo.findById(combate.competidor2.id).populate('dojoId').populate('miembros').lean();
+          }
+        }
+
+        if (combate.ganador?.id) {
+          if (bracket.modalidad === 'Individual') {
+            combate.ganador.datos = await Participante.findById(combate.ganador.id).populate('dojoId').lean();
+          } else {
+            combate.ganador.datos = await Equipo.findById(combate.ganador.id).populate('dojoId').populate('miembros').lean();
+          }
+        }
+      }
+    }
+
+    res.json(bracket);
+
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener bracket público' });
+  }
+});
+
+// Generar PDF del bracket
+app.get('/api/brackets/:id/pdf', auth, async (req, res) => {
+  try {
+    const PDFDocument = require('pdfkit');
+    const QRCode = require('qrcode');
+
+    // Obtener bracket completo
+    const bracket = await Bracket.findById(req.params.id)
+      .populate({
+        path: 'categoriaId',
+        populate: [
+          { path: 'disciplinaId' },
+          { path: 'rangoEdadId' }
+        ]
+      })
+      .lean();
+
+    if (!bracket) {
+      return res.status(404).json({ error: 'Bracket no encontrado' });
+    }
+
+    // Poblar competidores
+    for (const ronda of bracket.rondas) {
+      for (const combate of ronda.combates) {
+        if (combate.competidor1?.id && !combate.competidor1.esBye) {
+          if (bracket.modalidad === 'Individual') {
+            combate.competidor1.datos = await Participante.findById(combate.competidor1.id).populate('dojoId').lean();
+          } else {
+            combate.competidor1.datos = await Equipo.findById(combate.competidor1.id).populate('dojoId').populate('miembros').lean();
+          }
+        }
+
+        if (combate.competidor2?.id && !combate.competidor2.esBye) {
+          if (bracket.modalidad === 'Individual') {
+            combate.competidor2.datos = await Participante.findById(combate.competidor2.id).populate('dojoId').lean();
+          } else {
+            combate.competidor2.datos = await Equipo.findById(combate.competidor2.id).populate('dojoId').populate('miembros').lean();
+          }
+        }
+      }
+    }
+
+    // Crear documento PDF
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+
+    // Configurar headers para descarga
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=bracket-${bracket.categoriaId.nombre.replace(/ /g, '-')}.pdf`);
+
+    // Pipe del PDF a la respuesta
+    doc.pipe(res);
+
+    // ============ ENCABEZADO ============
+    doc.fontSize(20).font('Helvetica-Bold').text('⚔️ COPA SAMURAI 2025', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(16).text(bracket.categoriaId.nombre, { align: 'center' });
+    doc.moveDown(0.3);
+    doc.fontSize(10).font('Helvetica')
+       .text(`${bracket.categoriaId.disciplinaId.nombre} | ${bracket.categoriaId.rangoEdadId.nombre} años | ${bracket.categoriaId.genero}`, { align: 'center' });
+
+    if (bracket.categoriaId.nivel !== 'Libre') {
+      doc.fontSize(9).text(`Nivel: ${bracket.categoriaId.nivel}`, { align: 'center' });
+    }
+
+    doc.moveDown(0.5);
+    doc.fontSize(9).text(`Modalidad: ${bracket.modalidad} | Total Competidores: ${bracket.totalCompetidores}`, { align: 'center' });
+
+    // Línea separadora
+    doc.moveTo(40, doc.y + 10).lineTo(555, doc.y + 10).stroke();
+    doc.moveDown(1.5);
+
+    // ============ GENERAR QR CODE ============
+    const urlPublica = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/bracket/${bracket.tokenPublico}`;
+    const qrDataUrl = await QRCode.toDataURL(urlPublica, { width: 80 });
+    const qrBuffer = Buffer.from(qrDataUrl.split(',')[1], 'base64');
+
+    // Posicionar QR en esquina superior derecha
+    doc.image(qrBuffer, 490, 40, { width: 60 });
+    doc.fontSize(7).text('Escanea para', 490, 105, { width: 60, align: 'center' });
+    doc.text('ver en línea', 490, 113, { width: 60, align: 'center' });
+
+    // ============ LISTA DE COMBATES POR RONDA ============
+    let yPosition = doc.y;
+
+    for (const ronda of bracket.rondas) {
+      // Verificar si necesitamos nueva página
+      if (yPosition > 700) {
+        doc.addPage();
+        yPosition = 40;
+      }
+
+      // Título de la ronda
+      doc.fontSize(14).font('Helvetica-Bold')
+         .fillColor('#1e40af')
+         .text(ronda.nombreRonda, 40, yPosition);
+
+      yPosition += 25;
+      doc.fontSize(10).font('Helvetica').fillColor('#000');
+
+      // Dibujar tabla de combates
+      for (const combate of ronda.combates) {
+        // Verificar espacio para el combate
+        if (yPosition > 720) {
+          doc.addPage();
+          yPosition = 40;
+        }
+
+        // Número de combate
+        doc.fontSize(9).font('Helvetica-Bold')
+           .text(`Combate #${combate.numeroCombate}`, 45, yPosition);
+
+        if (combate.tatami) {
+          doc.fontSize(8).font('Helvetica')
+             .fillColor('#666')
+             .text(`Tatami ${combate.tatami}`, 140, yPosition);
+        }
+
+        yPosition += 18;
+        doc.fillColor('#000');
+
+        // Rectángulo del combate
+        const boxHeight = bracket.modalidad === 'Individual' ? 80 : 100;
+        doc.rect(45, yPosition, 510, boxHeight).stroke();
+
+        // Competidor 1
+        let comp1Y = yPosition + 10;
+        if (combate.competidor1?.datos) {
+          const comp1 = combate.competidor1.datos;
+          if (bracket.modalidad === 'Individual') {
+            doc.fontSize(11).font('Helvetica-Bold').text(comp1.nombre, 55, comp1Y, { width: 200 });
+            doc.fontSize(8).font('Helvetica')
+               .text(`${comp1.dojoId.nombre} | ${comp1.grado} | ${comp1.edad} años`, 55, comp1Y + 15, { width: 200 });
+          } else {
+            doc.fontSize(11).font('Helvetica-Bold').text(comp1.nombre, 55, comp1Y, { width: 200 });
+            doc.fontSize(8).font('Helvetica')
+               .text(`${comp1.dojoId.nombre} | Equipo #${comp1.numeroEquipo}`, 55, comp1Y + 15, { width: 200 });
+            const miembrosNombres = comp1.miembros.map(m => m.nombre).join(', ');
+            doc.fontSize(7).text(`Integrantes: ${miembrosNombres}`, 55, comp1Y + 28, { width: 200 });
+          }
+        } else if (combate.competidor1?.esBye) {
+          doc.fontSize(10).font('Helvetica-Oblique').fillColor('#999').text('BYE', 55, comp1Y);
+          doc.fillColor('#000');
+        } else {
+          doc.fontSize(9).font('Helvetica-Oblique').fillColor('#999').text('(Por definir)', 55, comp1Y);
+          doc.fillColor('#000');
+        }
+
+        // VS
+        doc.fontSize(14).font('Helvetica-Bold').text('VS', 265, yPosition + 30, { width: 40, align: 'center' });
+
+        // Competidor 2
+        let comp2Y = yPosition + 10;
+        if (combate.competidor2?.datos) {
+          const comp2 = combate.competidor2.datos;
+          if (bracket.modalidad === 'Individual') {
+            doc.fontSize(11).font('Helvetica-Bold').text(comp2.nombre, 320, comp2Y, { width: 200 });
+            doc.fontSize(8).font('Helvetica')
+               .text(`${comp2.dojoId.nombre} | ${comp2.grado} | ${comp2.edad} años`, 320, comp2Y + 15, { width: 200 });
+          } else {
+            doc.fontSize(11).font('Helvetica-Bold').text(comp2.nombre, 320, comp2Y, { width: 200 });
+            doc.fontSize(8).font('Helvetica')
+               .text(`${comp2.dojoId.nombre} | Equipo #${comp2.numeroEquipo}`, 320, comp2Y + 15, { width: 200 });
+            const miembrosNombres = comp2.miembros.map(m => m.nombre).join(', ');
+            doc.fontSize(7).text(`Integrantes: ${miembrosNombres}`, 320, comp2Y + 28, { width: 200 });
+          }
+        } else if (combate.competidor2?.esBye) {
+          doc.fontSize(10).font('Helvetica-Oblique').fillColor('#999').text('BYE', 320, comp2Y);
+          doc.fillColor('#000');
+        } else {
+          doc.fontSize(9).font('Helvetica-Oblique').fillColor('#999').text('(Por definir)', 320, comp2Y);
+          doc.fillColor('#000');
+        }
+
+        // Espacio para resultado
+        const resultY = yPosition + boxHeight - 25;
+        doc.fontSize(8).font('Helvetica').fillColor('#666')
+           .text('Ganador:', 55, resultY);
+        doc.rect(105, resultY - 2, 150, 15).stroke();
+
+        doc.text('Firma Juez:', 270, resultY);
+        doc.rect(325, resultY - 2, 150, 15).stroke();
+
+        doc.fillColor('#000');
+
+        yPosition += boxHeight + 15;
+      }
+
+      yPosition += 10;
+    }
+
+    // ============ PIE DE PÁGINA ============
+    const numPages = doc.bufferedPageRange().count;
+    for (let i = 0; i < numPages; i++) {
+      doc.switchToPage(i);
+      doc.fontSize(8).font('Helvetica').fillColor('#999')
+         .text(`Copa Samurai 2025 | Generado: ${new Date().toLocaleDateString('es-ES')} | Página ${i + 1} de ${numPages}`,
+               40, 780, { align: 'center', width: 515 });
+    }
+
+    // Finalizar PDF
+    doc.end();
+
+  } catch (error) {
+    console.error('Error generando PDF:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error al generar PDF' });
+    }
   }
 });
 
