@@ -1423,20 +1423,20 @@ function generarBracket(competidores, modalidad) {
       numeroCombate: numeroCombateGlobal++,
       orden: primeraRonda.combates.length + 1,
       competidor1: comp1 ? {
-        tipo: modalidad,
+        tipo: modalidad === 'Individual' ? 'Participante' : 'Equipo',
         id: comp1._id,
         esBye: false
       } : {
-        tipo: modalidad,
+        tipo: modalidad === 'Individual' ? 'Participante' : 'Equipo',
         id: null,
         esBye: true
       },
       competidor2: comp2 ? {
-        tipo: modalidad,
+        tipo: modalidad === 'Individual' ? 'Participante' : 'Equipo',
         id: comp2._id,
         esBye: false
       } : {
-        tipo: modalidad,
+        tipo: modalidad === 'Individual' ? 'Participante' : 'Equipo',
         id: null,
         esBye: true
       },
@@ -1446,10 +1446,10 @@ function generarBracket(competidores, modalidad) {
 
     // Si hay bye, establecer ganador automático
     if (!comp1 && comp2) {
-      combate.ganador = { tipo: modalidad, id: comp2._id };
+      combate.ganador = { tipo: modalidad === 'Individual' ? 'Participante' : 'Equipo', id: comp2._id };
       combate.estado = 'finalizado';
     } else if (comp1 && !comp2) {
-      combate.ganador = { tipo: modalidad, id: comp1._id };
+      combate.ganador = { tipo: modalidad === 'Individual' ? 'Participante' : 'Equipo', id: comp1._id };
       combate.estado = 'finalizado';
     }
 
@@ -1471,8 +1471,8 @@ function generarBracket(competidores, modalidad) {
       rondaObj.combates.push({
         numeroCombate: numeroCombateGlobal++,
         orden: i + 1,
-        competidor1: { tipo: modalidad, id: null, esBye: false },
-        competidor2: { tipo: modalidad, id: null, esBye: false },
+        competidor1: { tipo: modalidad === 'Individual' ? 'Participante' : 'Equipo', id: null, esBye: false },
+        competidor2: { tipo: modalidad === 'Individual' ? 'Participante' : 'Equipo', id: null, esBye: false },
         ganador: {},
         estado: 'pendiente'
       });
